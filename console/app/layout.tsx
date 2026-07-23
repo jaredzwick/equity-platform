@@ -30,8 +30,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   href="/master"
                   className="px-3 py-2 rounded hover:bg-white/5 text-sm flex items-center justify-between"
                 >
-                  <span className="font-medium">All businesses</span>
-                  <span className="text-[10px] text-[color:var(--color-muted)]">agency</span>
+                  <span className="font-medium">Agency</span>
+                  <span className="text-[10px] text-[color:var(--color-muted)]">{tenants.length}</span>
                 </Link>
                 {tenants.length === 0 && (
                   <div className="px-3 py-2 text-xs text-[color:var(--color-muted)]">

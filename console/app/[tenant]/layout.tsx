@@ -6,8 +6,11 @@ type Props = { children: React.ReactNode; params: Promise<{ tenant: string }> };
 
 export default async function TenantLayout({ children, params }: Props) {
   const { tenant: slug } = await params;
+  // "master" is served by app/master/*, not this dynamic route. If Next
+  // ever routes it here (shouldn't — static routes win), refuse.
+  if (slug === "master") notFound();
   const tenant = await resolveTenant(slug);
-  if (!tenant) notFound();
+  if (!tenant || tenant.slug === "master") notFound();
 
   const tabs = [
     { href: `/${slug}`, label: "Overview" },
