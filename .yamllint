@@ -1,0 +1,16 @@
+extends: relaxed
+
+rules:
+  line-length:
+    max: 200
+    level: warning
+  # inline mappings like `resources: { cpu: 100m, memory: 512Mi }` are readable
+  # and encouraged in Helm values files. Turn off the "too many spaces after
+  # colon" heuristic that flags them.
+  colons: disable
+
+ignore: |
+  console/node_modules/
+  console/.next/
+  console/out/
+  .git/

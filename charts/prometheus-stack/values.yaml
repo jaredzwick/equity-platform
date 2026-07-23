@@ -19,8 +19,8 @@ prometheus:
     retention: 7d
     retentionSize: "10GB"
     resources:
-      requests: { cpu: 100m, memory: 512Mi }
-      limits:   { cpu: 500m, memory: 1Gi }
+      requests: {cpu: 100m, memory: 512Mi}
+      limits: {cpu: 500m, memory: 1Gi}
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -32,8 +32,8 @@ prometheus:
 alertmanager:
   alertmanagerSpec:
     resources:
-      requests: { cpu: 50m, memory: 128Mi }
-      limits:   { cpu: 200m, memory: 256Mi }
+      requests: {cpu: 50m, memory: 128Mi}
+      limits: {cpu: 200m, memory: 256Mi}
     storage:
       volumeClaimTemplate:
         spec:
@@ -58,7 +58,7 @@ grafana:
     datasources:
       enabled: true
   resources:
-    requests: { cpu: 100m, memory: 128Mi }
-    limits:   { cpu: 300m, memory: 512Mi }
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 300m, memory: 512Mi}
 
 # node-exporter + kube-state-metrics are enabled by default; leaving alone.

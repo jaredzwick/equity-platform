@@ -88,6 +88,11 @@ if [ -z "$GIT_REPO_URL" ]; then
 else
   echo "==> Applying root app-of-apps (repo: $GIT_REPO_URL)"
   export GIT_REPO_URL
+  # Single-quoted '${GIT_REPO_URL}' is intentional — envsubst reads its args
+  # as a list of variable NAMES to substitute, not values. Double quotes
+  # would let the shell expand the variable first, leaving envsubst with no
+  # var to substitute. Same pattern pypes uses for its cron manifests.
+  # shellcheck disable=SC2016
   envsubst '${GIT_REPO_URL}' < "$REPO_DIR/bootstrap/03-root-app.yaml" | kubectl apply -f -
 fi
 

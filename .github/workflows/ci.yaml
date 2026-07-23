@@ -27,7 +27,9 @@ jobs:
       - name: yamllint
         run: |
           pip install --quiet yamllint
-          yamllint -d '{extends: relaxed, rules: {line-length: {max: 200}}}' .
+          # Config in ./.yamllint (extends relaxed; ignores node_modules/.next).
+          # No --strict: warnings do not fail the build; errors do.
+          yamllint .
 
   kubeval-manifests:
     runs-on: ubuntu-latest
