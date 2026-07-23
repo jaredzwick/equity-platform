@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { resolveTenant } from "@/lib/tenants";
+import TenantTabs from "./TenantTabs";
 
 type Props = { children: React.ReactNode; params: Promise<{ tenant: string }> };
 
@@ -31,17 +31,7 @@ export default async function TenantLayout({ children, params }: Props) {
             {tenant.namespaces.length > 0 ? tenant.namespaces.join(", ") : "no namespaces"}
           </span>
         </div>
-        <nav className="mt-4 flex gap-1 text-sm">
-          {tabs.map((t) => (
-            <Link
-              key={t.href}
-              href={t.href}
-              className="px-3 py-1.5 rounded hover:bg-white/5 text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]"
-            >
-              {t.label}
-            </Link>
-          ))}
-        </nav>
+        <TenantTabs tabs={tabs} />
       </header>
       {children}
     </div>

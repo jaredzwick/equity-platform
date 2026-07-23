@@ -68,11 +68,14 @@ function BusinessCard({ b }: { b: BusinessSummary }) {
   return (
     <Link
       href={`/${b.slug}`}
-      className="block border border-[color:var(--color-border)] rounded p-5 hover:bg-white/[0.02] transition"
+      className="group block border border-[color:var(--color-border)] rounded-lg p-5 hover:border-emerald-700/60 hover:bg-emerald-950/10 transition"
     >
       <div className="flex items-start justify-between mb-4">
         <div>
-          <div className="text-lg font-semibold">{b.name}</div>
+          <div className="text-lg font-semibold flex items-center gap-2">
+            {b.name}
+            <span className="text-[color:var(--color-muted)] group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-transform">→</span>
+          </div>
           <div className="text-xs text-[color:var(--color-muted)] font-mono mt-0.5">
             {b.namespaces.join(", ")}
           </div>

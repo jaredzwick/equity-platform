@@ -21,3 +21,4 @@ kubeconfig
 .env.local
 secrets.yaml
 !charts/*/secrets.yaml  # unless it's a template with placeholders
+.gstack/

@@ -109,9 +109,9 @@ export default function ValidatedInput({
 
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs uppercase tracking-wide text-[color:var(--color-muted)]">
+      <span className="text-sm font-medium text-[color:var(--color-fg)]">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-red-400 ml-1">*</span>}
       </span>
 
       {type === "textarea" ? (

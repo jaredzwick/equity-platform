@@ -60,18 +60,21 @@ export default async function AppsPage({ params }: Props) {
           <tbody>
             {apps.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-[color:var(--color-muted)]">
-                  {isMaster
-                    ? "No ArgoCD Applications yet."
-                    : (
-                      <>
-                        No apps in {tenant.name}.{" "}
-                        <Link href={`/${slug}/apps/new`} className="text-emerald-400 hover:underline">
-                          Provision one →
-                        </Link>
-                      </>
-                    )
-                  }
+                <td colSpan={6} className="p-10 text-center">
+                  <div className="text-sm text-[color:var(--color-fg)] mb-1">
+                    No ArgoCD Applications yet{isMaster ? "" : ` for ${tenant.name}`}.
+                  </div>
+                  <div className="text-xs text-[color:var(--color-muted)] mb-4">
+                    A Helm chart wrapped as an ArgoCD Application. Committed to git and reconciled continuously.
+                  </div>
+                  {!isMaster && (
+                    <Link
+                      href={`/${slug}/apps/new`}
+                      className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium inline-block"
+                    >
+                      + Provision your first app
+                    </Link>
+                  )}
                 </td>
               </tr>
             )}

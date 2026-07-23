@@ -70,8 +70,21 @@ export default async function TenantOverview({ params }: Props) {
             <tbody>
               {apps.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-[color:var(--color-muted)]">
-                    No ArgoCD Applications {isMaster ? "in the cluster" : `deployed to ${tenant.name}`}.
+                  <td colSpan={5} className="p-8 text-center">
+                    <div className="text-sm text-[color:var(--color-fg)] mb-1">
+                      No apps deployed{isMaster ? "" : ` to ${tenant.name}`} yet.
+                    </div>
+                    <div className="text-xs text-[color:var(--color-muted)] mb-3">
+                      An app is any Helm chart wrapped as an ArgoCD Application.
+                    </div>
+                    {!isMaster && (
+                      <Link
+                        href={`/${slug}/apps/new`}
+                        className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium inline-block"
+                      >
+                        + Provision one
+                      </Link>
+                    )}
                   </td>
                 </tr>
               )}
@@ -116,8 +129,21 @@ export default async function TenantOverview({ params }: Props) {
             <tbody>
               {crons.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-[color:var(--color-muted)]">
-                    No CronJobs {isMaster ? "in the cluster" : `in ${tenant.name}`}.
+                  <td colSpan={4} className="p-8 text-center">
+                    <div className="text-sm text-[color:var(--color-fg)] mb-1">
+                      No cron jobs{isMaster ? "" : ` in ${tenant.name}`} yet.
+                    </div>
+                    <div className="text-xs text-[color:var(--color-muted)] mb-3">
+                      Scheduled work — email digests, backups, sync jobs.
+                    </div>
+                    {!isMaster && (
+                      <Link
+                        href={`/${slug}/cron/new`}
+                        className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium inline-block"
+                      >
+                        + Schedule one
+                      </Link>
+                    )}
                   </td>
                 </tr>
               )}

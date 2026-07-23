@@ -25,8 +25,8 @@ export default async function EventsPage({ params }: Props) {
   return (
     <div className="max-w-6xl">
       {!snap.reachable && (
-        <div className="mb-6 p-4 border border-amber-900 rounded bg-amber-950/40 text-sm">
-          <div className="font-semibold text-amber-400 mb-1">NATS monitoring unreachable</div>
+        <div className="mb-6 p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">
+          <div className="font-semibold text-amber-200 mb-1">NATS monitoring unreachable</div>
           <div className="text-neutral-400 mb-3">{snap.error}</div>
           <div className="text-xs text-neutral-500">
             Local: <code className="text-neutral-300">kubectl port-forward -n nats svc/nats-headless 8222:8222</code>

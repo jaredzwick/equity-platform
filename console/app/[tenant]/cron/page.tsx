@@ -63,8 +63,22 @@ export default async function CronPage({ params }: Props) {
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-[color:var(--color-muted)]">
-                  No CronJobs.
+                <td colSpan={6} className="p-10 text-center">
+                  <div className="text-sm text-[color:var(--color-fg)] mb-1">
+                    No cron jobs yet{isMaster ? "" : ` for ${tenant.name}`}.
+                  </div>
+                  <div className="text-xs text-[color:var(--color-muted)] mb-4">
+                    Scheduled containers — email digests, backups, sync jobs. Written to git as{" "}
+                    <code>crons/&lt;name&gt;.yaml</code> and applied to the cluster.
+                  </div>
+                  {!isMaster && (
+                    <Link
+                      href={`/${slug}/cron/new`}
+                      className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium inline-block"
+                    >
+                      + Schedule your first cron
+                    </Link>
+                  )}
                 </td>
               </tr>
             )}

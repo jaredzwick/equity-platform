@@ -14,8 +14,8 @@ export default async function HistoryPage({ params }: Props) {
   if (!isConfigured()) {
     return (
       <div className="max-w-3xl">
-        <div className="p-4 border border-amber-900 rounded bg-amber-950/40 text-sm">
-          <div className="font-semibold text-amber-400 mb-1">Console not configured for GitOps writeback</div>
+        <div className="p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">
+          <div className="font-semibold text-amber-200 mb-1">Console not configured for GitOps writeback</div>
           <div className="text-neutral-400">
             Set <code className="text-neutral-300">GITHUB_TOKEN</code> and{" "}
             <code className="text-neutral-300">GITHUB_REPO</code> to see commit history. See{" "}

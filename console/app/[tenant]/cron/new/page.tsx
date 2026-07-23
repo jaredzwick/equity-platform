@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
 import { isConfigured, repoUrl } from "@/lib/github";
 import { notFound, redirect } from "next/navigation";
@@ -24,6 +25,13 @@ export default async function NewCronPage({ params, searchParams }: Props) {
 
   return (
     <div className="max-w-2xl">
+      <Link
+        href={`/${slug}/cron`}
+        className="inline-flex items-center gap-1 text-xs text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)] mb-4"
+      >
+        ← Cron
+      </Link>
+
       <p className="text-sm text-[color:var(--color-muted)] mb-6">
         Provision a new CronJob for{" "}
         <span className="font-medium text-[color:var(--color-fg)]">{tenant.name}</span>.
@@ -37,8 +45,8 @@ export default async function NewCronPage({ params, searchParams }: Props) {
       </p>
 
       {!configured && (
-        <div className="mb-6 p-4 border border-amber-900 rounded bg-amber-950/40 text-sm">
-          <div className="font-semibold text-amber-400 mb-1">GitOps writeback not configured</div>
+        <div className="mb-6 p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">
+          <div className="font-semibold text-amber-200 mb-1">GitOps writeback not configured</div>
           <div className="text-neutral-400">
             Set <code className="text-neutral-300">GITHUB_TOKEN</code> +{" "}
             <code className="text-neutral-300">GITHUB_REPO</code> in{" "}
@@ -105,7 +113,7 @@ export default async function NewCronPage({ params, searchParams }: Props) {
         />
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-[color:var(--color-muted)]">
+          <span className="text-sm font-medium text-[color:var(--color-fg)]">
             Concurrency policy
           </span>
           <select
@@ -126,7 +134,7 @@ export default async function NewCronPage({ params, searchParams }: Props) {
           <button
             type="submit"
             disabled={!configured}
-            className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm"
+            className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-neutral-800 disabled:text-neutral-500 disabled:cursor-not-allowed font-medium text-sm"
           >
             Commit + apply
           </button>

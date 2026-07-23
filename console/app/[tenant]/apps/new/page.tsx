@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
 import { isConfigured, repoUrl } from "@/lib/github";
 import { notFound, redirect } from "next/navigation";
+import ValidatedInput from "@/components/ValidatedInput";
 import { provisionAppFromForm } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -20,31 +22,45 @@ export default async function NewAppPage({ params, searchParams }: Props) {
 
   const configured = isConfigured();
   const defaultNamespace = tenant.namespaces[0] ?? "";
+  const defaultValuesYaml = `# Helm values. Empty = chart defaults.\n`;
 
   return (
     <div className="max-w-2xl">
+      <Link
+        href={`/${slug}/apps`}
+        className="inline-flex items-center gap-1 text-xs text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)] mb-4"
+      >
+        ← Apps
+      </Link>
+
       <p className="text-sm text-[color:var(--color-muted)] mb-6">
         Provision a new Helm-chart-backed ArgoCD Application for{" "}
         <span className="font-medium text-[color:var(--color-fg)]">{tenant.name}</span>.
-        Submitting writes two files to git (
-        <a href={configured ? repoUrl() : "#"} className="underline">the platform repo</a>
-        ) and ArgoCD picks it up on next sync.
+        Submitting writes two files to git{" "}
+        {configured ? (
+          <>
+            (<a href={repoUrl()} className="underline">the platform repo</a>)
+          </>
+        ) : (
+          "(the platform repo)"
+        )}{" "}
+        and ArgoCD picks it up on next sync.
       </p>
 
       {!configured && (
-        <div className="mb-6 p-4 border border-amber-900 rounded bg-amber-950/40 text-sm">
-          <div className="font-semibold text-amber-400 mb-1">Console not configured for GitOps writeback</div>
-          <div className="text-neutral-400">
-            Set <code className="text-neutral-300">GITHUB_TOKEN</code> and{" "}
-            <code className="text-neutral-300">GITHUB_REPO</code> in{" "}
-            <code className="text-neutral-300">console/.env.local</code>. See{" "}
-            <code className="text-neutral-300">console/.env.example</code>.
+        <div className="mb-6 p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">
+          <div className="font-semibold text-amber-200 mb-1">Not configured for GitOps writeback</div>
+          <div className="text-neutral-300">
+            Set <code className="text-neutral-100">GITHUB_TOKEN</code> and{" "}
+            <code className="text-neutral-100">GITHUB_REPO</code> in{" "}
+            <code className="text-neutral-100">console/.env.local</code>. See{" "}
+            <code className="text-neutral-100">console/.env.example</code>.
           </div>
         </div>
       )}
 
       {error && (
-        <div className="mb-6 p-4 border border-red-900 rounded bg-red-950/40 text-sm text-red-400">
+        <div className="mb-6 p-4 border border-red-500/40 rounded-lg bg-red-950/80 text-sm text-red-200">
           {error}
         </div>
       )}
@@ -52,56 +68,64 @@ export default async function NewAppPage({ params, searchParams }: Props) {
       <form action={provisionAppFromForm} className="flex flex-col gap-4">
         <input type="hidden" name="tenant" value={slug} />
 
-        <Field label="Application name" hint="kebab-case; becomes filename + ArgoCD Application name">
-          <input
-            name="name"
+        <ValidatedInput
+          name="name"
+          label="Application name"
+          validator="kebab"
+          required
+          hint="kebab-case; becomes filename + ArgoCD Application name"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <ValidatedInput
+            name="chartRepo"
+            label="Chart repo URL"
+            validator="chartRepoUrl"
             required
-            pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?"
-            placeholder="redis"
-            className="input"
+            defaultValue="https://charts.bitnami.com/bitnami"
+            hint="Helm repo (https)"
           />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Chart repo URL" hint="Helm repo (https)">
-            <input
-              name="chartRepo"
-              required
-              defaultValue="https://charts.bitnami.com/bitnami"
-              className="input"
-            />
-          </Field>
-          <Field label="Chart name">
-            <input name="chartName" required placeholder="redis" className="input" />
-          </Field>
+          <ValidatedInput
+            name="chartName"
+            label="Chart name"
+            required
+            hint="e.g. redis, postgresql"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Chart version" hint="Pin exactly — no ^ or ~">
-            <input name="chartVersion" required placeholder="20.1.0" className="input" />
-          </Field>
-          <Field label="Target namespace">
-            <input name="namespace" required defaultValue={defaultNamespace} className="input" />
-          </Field>
+          <ValidatedInput
+            name="chartVersion"
+            label="Chart version"
+            validator="chartVersion"
+            required
+            hint="Pin exactly — no ^ or ~"
+          />
+          <ValidatedInput
+            name="namespace"
+            label="Target namespace"
+            validator="namespace"
+            required
+            defaultValue={defaultNamespace}
+            hint="Kubernetes namespace"
+          />
         </div>
 
-        <Field
+        <ValidatedInput
+          name="valuesYaml"
           label="Values YAML"
-          hint={`Written to charts/<name>/values.yaml. Empty = chart defaults.`}
-        >
-          <textarea
-            name="valuesYaml"
-            rows={10}
-            defaultValue="# Helm values for this chart. Empty = chart defaults.\n"
-            className="input font-mono text-xs"
-          />
-        </Field>
+          type="textarea"
+          rows={8}
+          defaultValue={defaultValuesYaml}
+          hint="Written to charts/<name>/values.yaml. Empty = chart defaults."
+          className="font-mono"
+        />
 
         <div className="flex items-center gap-3 mt-2">
           <button
             type="submit"
             disabled={!configured}
-            className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm"
+            className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-neutral-800 disabled:text-neutral-500 disabled:cursor-not-allowed font-medium text-sm"
           >
             Commit + reconcile
           </button>
@@ -110,32 +134,6 @@ export default async function NewAppPage({ params, searchParams }: Props) {
           </span>
         </div>
       </form>
-
-      <style>{`
-        .input {
-          width: 100%;
-          padding: 0.5rem 0.75rem;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid var(--color-border);
-          border-radius: 0.375rem;
-          color: var(--color-fg);
-          font-size: 0.875rem;
-        }
-        .input:focus {
-          outline: none;
-          border-color: rgba(16, 185, 129, 0.6);
-        }
-      `}</style>
     </div>
-  );
-}
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs uppercase tracking-wide text-[color:var(--color-muted)]">{label}</span>
-      {children}
-      {hint && <span className="text-[11px] text-[color:var(--color-muted)]">{hint}</span>}
-    </label>
   );
 }

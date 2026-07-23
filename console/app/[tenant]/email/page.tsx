@@ -21,8 +21,8 @@ export default async function EmailPage({ params }: Props) {
   return (
     <div className="max-w-6xl">
       {!connected && (
-        <div className="p-4 border border-amber-900 rounded bg-amber-950/40 text-sm">
-          <div className="font-semibold text-amber-400 mb-1">Not connected</div>
+        <div className="p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">
+          <div className="font-semibold text-amber-200 mb-1">Not connected</div>
           <div className="text-neutral-400">
             {slug === MASTER_SLUG
               ? "Master email view aggregates from every tenant. Wire per-tenant DBs first."

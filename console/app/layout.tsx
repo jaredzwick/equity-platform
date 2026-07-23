@@ -42,22 +42,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link
                     key={t.slug}
                     href={`/${t.slug}`}
-                    className="px-3 py-2 rounded hover:bg-white/5 text-sm flex items-center justify-between"
+                    className="px-3 py-2 rounded hover:bg-white/5 text-sm"
                   >
-                    <span>{t.name}</span>
-                    <span className="text-[10px] text-[color:var(--color-muted)]">
-                      {t.namespaces.length} ns
-                    </span>
+                    {t.name}
                   </Link>
                 ))}
               </nav>
-            </div>
-
-            <div className="mt-auto text-[10px] text-[color:var(--color-muted)] px-2 leading-relaxed">
-              Add a business:
-              <br />
-              label a namespace with{" "}
-              <code className="text-neutral-400">equity.io/tenant</code>
             </div>
           </aside>
           <main className="flex-1 p-8 overflow-auto">{children}</main>
