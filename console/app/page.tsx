@@ -26,9 +26,6 @@ export default async function Home() {
     err = e instanceof Error ? e.message : String(e);
   }
 
-  const synced = apps.filter((a) => a.status?.sync?.status === "Synced").length;
-  const healthy = apps.filter((a) => a.status?.health?.status === "Healthy").length;
-
   return (
     <div className="max-w-5xl">
       <h1 className="text-2xl font-semibold mb-6">Overview</h1>
@@ -43,21 +40,6 @@ export default async function Home() {
           </div>
         </div>
       )}
-
-      <section className="grid grid-cols-3 gap-4 mb-8">
-        <div className="p-4 border border-[color:var(--color-border)] rounded">
-          <div className="text-xs text-[color:var(--color-muted)] uppercase">ArgoCD apps</div>
-          <div className="text-3xl font-semibold mt-1">{apps.length}</div>
-        </div>
-        <div className="p-4 border border-[color:var(--color-border)] rounded">
-          <div className="text-xs text-[color:var(--color-muted)] uppercase">Synced</div>
-          <div className="text-3xl font-semibold mt-1 text-emerald-400">{synced}/{apps.length}</div>
-        </div>
-        <div className="p-4 border border-[color:var(--color-border)] rounded">
-          <div className="text-xs text-[color:var(--color-muted)] uppercase">Healthy</div>
-          <div className="text-3xl font-semibold mt-1 text-emerald-400">{healthy}/{apps.length}</div>
-        </div>
-      </section>
 
       <section>
         <h2 className="text-lg font-medium mb-3">Applications</h2>

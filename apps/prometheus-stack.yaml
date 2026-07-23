@@ -7,14 +7,13 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://prometheus-community.github.io/helm-charts
-    chart: kube-prometheus-stack
-    targetRevision: 65.5.0
-    helm:
-      valueFiles:
-        - $values/charts/prometheus-stack/values.yaml
   sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 65.5.0
+      helm:
+        valueFiles:
+          - $values/charts/prometheus-stack/values.yaml
     - repoURL: ${GIT_REPO_URL}
       targetRevision: HEAD
       ref: values

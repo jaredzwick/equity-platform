@@ -7,14 +7,16 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://nats-io.github.io/k8s/helm/charts
-    chart: nats
-    targetRevision: 1.2.11
-    helm:
-      valueFiles:
-        - $values/charts/nats/values.yaml
+  # Multi-source: chart from Helm repo + values from THIS git repo.
+  # Both entries must live under `sources[]` — if you also set `spec.source`,
+  # ArgoCD ignores it entirely when `sources[]` is present.
   sources:
+    - repoURL: https://nats-io.github.io/k8s/helm/charts
+      chart: nats
+      targetRevision: 1.2.11
+      helm:
+        valueFiles:
+          - $values/charts/nats/values.yaml
     - repoURL: ${GIT_REPO_URL}
       targetRevision: HEAD
       ref: values

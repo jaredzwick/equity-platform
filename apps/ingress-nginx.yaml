@@ -7,14 +7,13 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://kubernetes.github.io/ingress-nginx
-    chart: ingress-nginx
-    targetRevision: 4.11.3
-    helm:
-      valueFiles:
-        - $values/charts/ingress-nginx/values.yaml
   sources:
+    - repoURL: https://kubernetes.github.io/ingress-nginx
+      chart: ingress-nginx
+      targetRevision: 4.11.3
+      helm:
+        valueFiles:
+          - $values/charts/ingress-nginx/values.yaml
     - repoURL: ${GIT_REPO_URL}
       targetRevision: HEAD
       ref: values
