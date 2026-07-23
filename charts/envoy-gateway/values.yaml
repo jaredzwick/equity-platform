@@ -1,0 +1,33 @@
+# envoy-gateway (control plane / operator) Helm values.
+# Chart version pinned in apps/envoy-gateway.yaml.
+#
+# The operator watches Gateway API resources (GatewayClass, Gateway,
+# HTTPRoute, ...) and provisions Envoy dataplane pods to serve traffic.
+# Gateway resources declared in git become live routes.
+#
+# LOCAL kind: use defaults (ClusterIP for the Envoy dataplane; access via
+#   kubectl port-forward or install cloud-provider-kind for LB services).
+# PROD: switch envoyGatewayResources.gateway.controllerName to your prod
+#   class name if you need multiple Envoy classes, and adjust replicas.
+
+# Resource limits for the control plane pods.
+deployment:
+  envoyGateway:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  ports:
+    - name: grpc
+      port: 18000
+      targetPort: 18000
+    - name: ratelimit
+      port: 18001
+      targetPort: 18001
+
+# Extra config for the EnvoyGateway resource itself (not the dataplane).
+# Empty here — defaults are sensible.
+config: {}

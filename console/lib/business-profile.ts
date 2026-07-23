@@ -4,7 +4,7 @@
 // automatically. Existing profiles with missing fields render empty; new
 // fields default to blank.
 
-import yaml from "js-yaml";
+import { load as yamlLoad, dump as yamlDump } from "js-yaml";
 import { getFileSha, putFile, isConfigured } from "@/lib/github";
 
 // ─── Schema ───────────────────────────────────────────────────────────────
@@ -167,11 +167,11 @@ export function serializeProfile(profile: BusinessProfile): string {
     "# Business profile — declarative source of truth for this tenant.\n" +
     "# Edited via console/[tenant]/profile OR by hand + commit.\n" +
     "# Schema: console/lib/business-profile.ts\n\n";
-  return header + yaml.dump(profile, { sortKeys: false, lineWidth: 100, noRefs: true });
+  return header + yamlDump(profile, { sortKeys: false, lineWidth: 100, noRefs: true });
 }
 
 export function parseProfile(text: string): BusinessProfile {
-  const parsed = yaml.load(text);
+  const parsed = yamlLoad(text);
   if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
   return parsed as BusinessProfile;
 }

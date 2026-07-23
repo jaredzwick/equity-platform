@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    # OCI-hosted Envoy Gateway Helm chart. Version pinned so a values-only
+    # change never silently pulls a new minor. Ships the operator + CRDs
+    # (GatewayClass, Gateway, HTTPRoute, EnvoyProxy, etc.). The Envoy
+    # dataplane pods are provisioned per-Gateway on demand.
+    #
+    # ArgoCD needs the repo pre-registered as an OCI Helm repo:
+    #   argocd repo add docker.io/envoyproxy --type helm --name envoyproxy --enable-oci
+    #
+    # If registration isn't set up yet, the app will show OutOfSync — that's
+    # a one-time setup task, not a manifest bug.
+    - repoURL: docker.io/envoyproxy
+      chart: gateway-helm
+      targetRevision: v1.3.0
+      helm:
+        valueFiles:
+          - $values/charts/envoy-gateway/values.yaml
+    - repoURL: ${GIT_REPO_URL}
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

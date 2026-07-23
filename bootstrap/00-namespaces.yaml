@@ -15,7 +15,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ingress-nginx
+  name: envoy-gateway-system
 ---
 apiVersion: v1
 kind: Namespace

@@ -47,7 +47,7 @@ graph TD
     subgraph "Kubernetes cluster"
       A[ArgoCD]
       subgraph "Platform (shared)"
-        NG[ingress-nginx]
+        NG[envoy-gateway]
         ES[External Secrets]
         NA[NATS JetStream]
         PR[Prometheus + Grafana]
