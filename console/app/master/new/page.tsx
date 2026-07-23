@@ -10,6 +10,7 @@ type Props = { searchParams: Promise<{ error?: string }> };
 export default async function NewBusinessPage({ searchParams }: Props) {
   const { error } = await searchParams;
   const configured = isConfigured();
+  const configuredRepoUrl = configured ? await repoUrl() : null;
 
   return (
     <div className="max-w-xl">
@@ -27,7 +28,7 @@ export default async function NewBusinessPage({ searchParams }: Props) {
         via GitHub{" "}
         {configured ? (
           <>
-            (<a href={repoUrl()} className="underline">the platform repo</a>)
+            (<a href={configuredRepoUrl ?? "#"} className="underline">the platform repo</a>)
           </>
         ) : (
           "(the platform repo)"

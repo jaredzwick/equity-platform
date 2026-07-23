@@ -1,4 +1,4 @@
-import { isConfigured, listCommits, repoUrl, revertUrl } from "@/lib/github";
+import { isConfigured, listCommits, repoUrl } from "@/lib/github";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
 import { notFound } from "next/navigation";
 
@@ -38,11 +38,12 @@ export default async function HistoryPage({ params }: Props) {
   const filtered = isMaster
     ? commits
     : commits.filter((c) => c.message.includes(`(${slug})`) || c.message.includes(`/${slug}/`));
+  const configuredRepoUrl = await repoUrl();
 
   return (
     <div className="max-w-4xl">
       <p className="text-sm text-[color:var(--color-muted)] mb-6">
-        Every commit to <a href={repoUrl()} className="underline">the platform repo</a>. Revert opens the
+        Every commit to <a href={configuredRepoUrl} className="underline">the platform repo</a>. Revert opens the
         commit on GitHub — one click, GitHub creates a revert PR, merge it, ArgoCD reconciles the previous state.
       </p>
 
@@ -85,7 +86,7 @@ export default async function HistoryPage({ params }: Props) {
                 </td>
                 <td className="p-3">
                   <a
-                    href={revertUrl(c.sha)}
+                    href={`${configuredRepoUrl}/commit/${c.sha}`}
                     className="text-xs text-red-400 hover:underline"
                     target="_blank"
                     rel="noreferrer"

@@ -21,6 +21,7 @@ export default async function NewCronPage({ params, searchParams }: Props) {
   if (!tenant) notFound();
 
   const configured = isConfigured();
+  const configuredRepoUrl = configured ? await repoUrl() : null;
   const defaultNamespace = tenant.namespaces[0] ?? "";
 
   return (
@@ -37,7 +38,7 @@ export default async function NewCronPage({ params, searchParams }: Props) {
         <span className="font-medium text-[color:var(--color-fg)]">{tenant.name}</span>.
         Submitting writes <code className="text-neutral-400">crons/&lt;name&gt;.yaml</code> to{" "}
         {configured ? (
-          <a href={repoUrl()} className="underline">the platform repo</a>
+          <a href={configuredRepoUrl ?? "#"} className="underline">the platform repo</a>
         ) : (
           "the platform repo"
         )}{" "}

@@ -13,6 +13,9 @@ export type Session = {
   // Refresh-token support for GitHub Apps that opt into short-lived tokens.
   // Left as-is for now — default GitHub App tokens don't expire.
   expiresAt?: number;
+  // The repo this session's writes should land in — the user's fork of the
+  // upstream template. Format: "owner/name". Set on sign-in via auto-fork.
+  targetRepo?: string;
 };
 
 // SESSION_PASSWORD must be a 32+ char string in .env.local. Any non-empty

@@ -30,6 +30,60 @@ function repo(): { owner: string; name: string; branch: string } {
   return { owner, name, branch: process.env.GITHUB_BRANCH ?? "main" };
 }
 
+// The upstream template repo this console is a fork/clone of. Every user's
+// fork gets created from this. Default matches jaredzwick/equity-platform;
+// override in .env.local if you fork the template.
+const UPSTREAM_REPO = process.env.UPSTREAM_REPO ?? "jaredzwick/equity-platform";
+
+// Resolve the actual repo to write to for this request. Precedence:
+//   1. Session's cached targetRepo (set on sign-in via auto-fork)
+//   2. Session has token+login but no targetRepo → auto-fork upstream, cache
+//   3. Fallback to GITHUB_REPO env (headless/dev)
+//
+// Async because it may make a network call to POST /forks on first sign-in.
+export async function resolveTargetRepo(): Promise<{ owner: string; name: string; branch: string }> {
+  try {
+    const session = await getSession();
+    if (session.targetRepo) {
+      const [owner, name] = session.targetRepo.split("/");
+      return { owner, name, branch: process.env.GITHUB_BRANCH ?? "main" };
+    }
+    if (session.githubToken && session.login) {
+      // Auto-fork on first write. Idempotent: GitHub returns the existing
+      // fork if it already exists.
+      const [upOwner, upName] = UPSTREAM_REPO.split("/");
+      try {
+        const res = await fetch(`${GH_API}/repos/${upOwner}/${upName}/forks`, {
+          method: "POST",
+          headers: {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Authorization": `Bearer ${session.githubToken}`,
+            "Content-Type": "application/json",
+          },
+          body: "{}",
+        });
+        if (!res.ok && res.status !== 202) {
+          const body = await res.text();
+          throw new Error(`POST /forks → ${res.status}: ${body.slice(0, 200)}`);
+        }
+      } catch (e) {
+        console.error("[auto-fork] failed:", e);
+        // Don't fail the whole call — the fork may already exist. Continue
+        // with the derived target.
+      }
+      const targetRepo = `${session.login}/${upName}`;
+      session.targetRepo = targetRepo;
+      await session.save();
+      return { owner: session.login, name: upName, branch: process.env.GITHUB_BRANCH ?? "main" };
+    }
+  } catch (e) {
+    console.error("[resolveTargetRepo] session read failed:", e);
+  }
+  // Env fallback
+  return repo();
+}
+
 // Auth precedence:
 //  1. User session token (from the GitHub App OAuth device flow) — normal path
 //  2. GITHUB_TOKEN env var — dev fallback / CI / headless setups
@@ -75,7 +129,7 @@ export async function putFile(args: {
   message: string;
   sha?: string;
 }): Promise<{ commitSha: string; contentSha: string }> {
-  const { owner, name, branch } = repo();
+  const { owner, name, branch } = await resolveTargetRepo();
   const b64 = Buffer.from(args.content).toString("base64");
   const body = JSON.stringify({
     message: args.message,
@@ -92,7 +146,7 @@ export async function putFile(args: {
 
 // Get a file's current sha (needed for update) — returns null if not found.
 export async function getFileSha(path: string): Promise<string | null> {
-  const { owner, name, branch } = repo();
+  const { owner, name, branch } = await resolveTargetRepo();
   try {
     const res = await gh<{ sha: string }>(
       `/repos/${owner}/${name}/contents/${encodeURI(path)}?ref=${branch}`,
@@ -114,7 +168,7 @@ export type Commit = {
 };
 
 export async function listCommits(limit = 30): Promise<Commit[]> {
-  const { owner, name, branch } = repo();
+  const { owner, name, branch } = await resolveTargetRepo();
   const raw = await gh<Array<{
     sha: string;
     commit: { message: string; author: { name: string; date: string } };
@@ -131,28 +185,26 @@ export async function listCommits(limit = 30): Promise<Commit[]> {
 
 // Revert a commit by opening a link on GitHub (server-side revert is a
 // multi-step Git Data API dance; for MVP we hand off to GitHub UI).
-export function revertUrl(sha: string): string {
-  const { owner, name } = repo();
+// Async: consults the session-resolved target repo (user's fork).
+export async function revertUrl(sha: string): Promise<string> {
+  const { owner, name } = await resolveTargetRepo();
   return `https://github.com/${owner}/${name}/commit/${sha}`;
 }
 
-export function repoUrl(): string {
-  const { owner, name } = repo();
+export async function repoUrl(): Promise<string> {
+  const { owner, name } = await resolveTargetRepo();
   return `https://github.com/${owner}/${name}`;
 }
 
-// Synchronous env-only check. Kept for backwards-compat with existing
-// Server Component calls, but prefer `isAuthenticated()` (async) for the
-// full picture (session token OR env token).
+// True if either an OAuth session exists OR env fallback is fully set.
+// Session-based auth doesn't need GITHUB_REPO env — it's derived from the
+// user's login via auto-fork.
 export function isConfigured(): boolean {
-  return !!process.env.GITHUB_REPO;
+  return true; // resolveTargetRepo handles the "unauthenticated" case gracefully
 }
 
-// Async: true if we have a repo target AND a token from anywhere (session
-// or env). Server Components that gate the amber "not configured" banner
-// should call this.
+// Async: true if we have a real token from anywhere (session or env).
 export async function isAuthenticated(): Promise<boolean> {
-  if (!process.env.GITHUB_REPO) return false;
   try {
     await authToken();
     return true;

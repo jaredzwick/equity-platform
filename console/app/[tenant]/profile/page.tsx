@@ -33,6 +33,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   }
 
   const editing = edit === "1" || !profile;
+  const configuredRepoUrl = configured ? await repoUrl() : null;
 
   return (
     <div className="max-w-4xl">
@@ -40,9 +41,9 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         <div className="text-sm text-[color:var(--color-muted)]">
           Declarative source of truth for <span className="text-[color:var(--color-fg)]">{tenant.name}</span>.
           Saved as{" "}
-          {configured ? (
+          {configuredRepoUrl ? (
             <a
-              href={`${repoUrl()}/blob/main/${profilePath(slug)}`}
+              href={`${configuredRepoUrl}/blob/main/${profilePath(slug)}`}
               className="underline text-emerald-400"
               target="_blank"
               rel="noreferrer"

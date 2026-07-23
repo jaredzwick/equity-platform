@@ -21,6 +21,7 @@ export default async function NewAppPage({ params, searchParams }: Props) {
   if (!tenant) notFound();
 
   const configured = isConfigured();
+  const configuredRepoUrl = configured ? await repoUrl() : null;
   const defaultNamespace = tenant.namespaces[0] ?? "";
   const defaultValuesYaml = `# Helm values. Empty = chart defaults.\n`;
 
@@ -39,7 +40,7 @@ export default async function NewAppPage({ params, searchParams }: Props) {
         Submitting writes two files to git{" "}
         {configured ? (
           <>
-            (<a href={repoUrl()} className="underline">the platform repo</a>)
+            (<a href={configuredRepoUrl ?? "#"} className="underline">the platform repo</a>)
           </>
         ) : (
           "(the platform repo)"
