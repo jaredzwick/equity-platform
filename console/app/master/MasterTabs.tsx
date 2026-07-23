@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/master", label: "Businesses", exact: true },
   { href: "/master/aggregate", label: "Aggregate observability", exact: false },
+  { href: "/master/settings", label: "Agency settings", exact: false },
 ];
 
 export default function MasterTabs() {
