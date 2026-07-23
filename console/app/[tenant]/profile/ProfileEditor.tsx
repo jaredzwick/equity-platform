@@ -6,7 +6,7 @@ import {
   PROFILE_SCHEMA,
   type BusinessProfile,
   type Field,
-} from "@/lib/business-profile";
+} from "@/lib/business-profile-schema";
 import { saveProfileFromForm } from "./actions";
 
 type Props = {

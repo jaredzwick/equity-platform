@@ -1,7 +1,7 @@
 "use server";
 
 import { core } from "@/lib/k8s";
-import { getFileSha, isConfigured, putFile } from "@/lib/github";
+import { authToken, getFileSha, isConfigured, putFile } from "@/lib/github";
 import { discoverTenants } from "@/lib/tenants";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -63,9 +63,10 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
     const owner = process.env.GITHUB_REPO!.split("/")[0];
     const repo = process.env.GITHUB_REPO!.split("/")[1];
     const branch = process.env.GITHUB_BRANCH ?? "main";
+    const token = await authToken();
     const raw = await fetch(
       `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${BOOTSTRAP_PATH}`,
-      { cache: "no-store", headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } },
+      { cache: "no-store", headers: { Authorization: `Bearer ${token}` } },
     );
     if (!raw.ok) {
       redirect(`${backTo}?error=${encodeURIComponent(`Could not read ${BOOTSTRAP_PATH}: HTTP ${raw.status}`)}`);

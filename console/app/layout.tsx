@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { discoverTenants } from "@/lib/tenants";
+import SignInGitHub from "@/components/SignInGitHub";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -48,6 +49,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   </Link>
                 ))}
               </nav>
+            </div>
+
+            <div className="mt-auto">
+              <SignInGitHub />
             </div>
           </aside>
           <main className="flex-1 p-8 overflow-auto">{children}</main>

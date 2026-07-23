@@ -13,6 +13,8 @@
 // provisioning. If atomicity matters later, upgrade to the Git Data API
 // (create blob → create tree → create commit → update ref).
 
+import { getSession } from "@/lib/session";
+
 const GH_API = "https://api.github.com";
 
 function envRequire(name: string): string {
@@ -28,8 +30,24 @@ function repo(): { owner: string; name: string; branch: string } {
   return { owner, name, branch: process.env.GITHUB_BRANCH ?? "main" };
 }
 
+// Auth precedence:
+//  1. User session token (from the GitHub App OAuth device flow) — normal path
+//  2. GITHUB_TOKEN env var — dev fallback / CI / headless setups
+export async function authToken(): Promise<string> {
+  try {
+    const session = await getSession();
+    if (session.githubToken) return session.githubToken;
+  } catch {
+    // getSession may fail outside a request context (e.g., unit tests). Fall
+    // through to env token.
+  }
+  const envToken = process.env.GITHUB_TOKEN;
+  if (envToken) return envToken;
+  throw new Error("Not authenticated — sign in with GitHub or set GITHUB_TOKEN in .env.local");
+}
+
 async function gh<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = envRequire("GITHUB_TOKEN");
+  const token = await authToken();
   const res = await fetch(`${GH_API}${path}`, {
     ...init,
     headers: {
@@ -123,6 +141,22 @@ export function repoUrl(): string {
   return `https://github.com/${owner}/${name}`;
 }
 
+// Synchronous env-only check. Kept for backwards-compat with existing
+// Server Component calls, but prefer `isAuthenticated()` (async) for the
+// full picture (session token OR env token).
 export function isConfigured(): boolean {
-  return !!(process.env.GITHUB_TOKEN && process.env.GITHUB_REPO);
+  return !!process.env.GITHUB_REPO;
+}
+
+// Async: true if we have a repo target AND a token from anywhere (session
+// or env). Server Components that gate the amber "not configured" banner
+// should call this.
+export async function isAuthenticated(): Promise<boolean> {
+  if (!process.env.GITHUB_REPO) return false;
+  try {
+    await authToken();
+    return true;
+  } catch {
+    return false;
+  }
 }
