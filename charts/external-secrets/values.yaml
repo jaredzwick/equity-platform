@@ -1,0 +1,11 @@
+# external-secrets chart values.
+# Chart version pinned in apps/external-secrets.yaml.
+installCRDs: true
+replicaCount: 1
+webhook:
+  replicaCount: 1
+certController:
+  replicaCount: 1
+# For LOCAL: the FakeSecretStore backend is defined per-namespace in the
+# services template; no cluster-wide backend needed here. For PROD, add a
+# ClusterSecretStore manifest pointing at DO Secrets / 1Password / SOPS.

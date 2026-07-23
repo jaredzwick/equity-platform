@@ -1,0 +1,36 @@
+# Root app-of-apps. ArgoCD reconciles this Application which points at
+# ./apps/, causing every child Application manifest in there to be created
+# and synced. Adding a new platform component = add a file under apps/ +
+# a values.yaml under charts/<name>/, commit, ArgoCD picks it up on next sync.
+#
+# For LOCAL kind: repoURL points at the local path via a file:// URL. In
+# production this switches to https://github.com/<org>/equity-platform.git.
+# The switch happens via kustomize overlay or a manual edit at cluster-init time.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # NOTE: local dev uses a Git remote or a bind-mounted volume. The simplest
+    # local flow is to push this repo to a private GitHub repo and reference it
+    # here. For a fully offline demo, use `argocd repo add` with a local git
+    # server (e.g., gitea) — documented in local/README.md.
+    #
+    # Placeholder — replace with your actual repo URL before running up.sh:
+    repoURL: ${GIT_REPO_URL}
+    targetRevision: HEAD
+    path: apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

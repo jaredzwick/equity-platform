@@ -1,0 +1,28 @@
+# ArgoCD install manifest reference.
+# The up.sh script applies this file via kubectl -n argocd apply -f, which
+# resolves the URL and applies the upstream manifests. Pinned to a specific
+# ArgoCD version so a values-only change never silently pulls a new major.
+#
+# To upgrade ArgoCD: bump the version tag below, run local/up.sh, verify,
+# then commit. Do NOT track the resolved manifest in git — reference only.
+#
+# Version: v2.13.1 (2025-11 release)
+# Upstream: https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/
+#
+# This file is a placeholder documenting the pin. up.sh actually references
+# the upstream URL directly:
+#
+#   ARGOCD_VERSION=v2.13.1
+#   kubectl apply -n argocd -f \
+#     "https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
+#
+# When migrating to a HA / prod deployment, switch to the ha/install.yaml variant.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-version-pin
+  namespace: argocd
+data:
+  version: "v2.13.1"
+  variant: "install.yaml"
+  upstream: "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.1/manifests/install.yaml"

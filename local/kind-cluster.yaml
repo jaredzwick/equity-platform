@@ -1,0 +1,21 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: equity-local
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 8080
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 8443
+        protocol: TCP
+      - containerPort: 4222
+        hostPort: 4222
+        protocol: TCP

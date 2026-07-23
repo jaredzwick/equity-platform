@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nats
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: business-prod
+  labels:
+    equity.io/tenant: business
+    equity.io/env: production

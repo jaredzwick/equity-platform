@@ -1,0 +1,46 @@
+# NATS chart values.
+# Chart version pinned in apps/nats.yaml.
+#
+# JetStream is enabled — this is the durable, replayable event stream that
+# the services/api events package publishes to. Storage is on disk.
+#
+# LOCAL: single-node (no HA), file-backed storage, 1Gi cap. Fine for dev.
+# PROD:  bump replicaCount to 3 for RAFT quorum, storage to 20Gi+, add PVC
+#        storageClassName override.
+config:
+  cluster:
+    enabled: false        # true + replicas: 3 for prod HA
+    replicas: 1
+  jetstream:
+    enabled: true
+    fileStore:
+      enabled: true
+      pvc:
+        enabled: true
+        size: 1Gi
+    memoryStore:
+      enabled: false
+  nats:
+    port: 4222
+
+# Service — expose 4222 as ClusterIP; local access via kubectl port-forward
+# or the extraPortMappings in kind-cluster.yaml (already maps host 4222).
+service:
+  ports:
+    nats:
+      enabled: true
+
+# Resource limits — modest for local; bump for prod.
+container:
+  merge:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Monitoring — enable if prometheus-stack is installed.
+promExporter:
+  enabled: false

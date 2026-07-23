@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck
+
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: yamllint
+        run: |
+          pip install --quiet yamllint
+          yamllint -d '{extends: relaxed, rules: {line-length: {max: 200}}}' .
+
+  kubeval-manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar -xzC /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/
+      - name: Validate bootstrap manifests
+        run: kubeconform -strict -ignore-missing-schemas -summary bootstrap/
+      - name: Validate app manifests
+        run: kubeconform -strict -ignore-missing-schemas -summary apps/
