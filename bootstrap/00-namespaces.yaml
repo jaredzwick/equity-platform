@@ -1,12 +1,14 @@
-# Platform namespaces + tenant (business) namespaces.
+# Platform namespaces. Fresh init ships with ZERO tenants — create them
+# via the console (Master → + New Business) or by appending a namespace
+# block here with the two required labels:
 #
-# Adding a new business = append a namespace block with these two labels:
 #   equity.io/tenant: <slug>          # kebab-case, used in console URLs
-#   equity.io/tenant-name: <display>  # human name shown in the console sidebar
-# Then re-apply (kubectl apply -f bootstrap/00-namespaces.yaml) OR re-run
-# ./local/up.sh (idempotent). Console auto-discovers on next request.
+#   equity.io/tenant-name: <display>  # human name shown in the sidebar
+#
+# Then re-apply (kubectl apply -f bootstrap/00-namespaces.yaml) or re-run
+# ./local/up.sh (idempotent). The console auto-discovers on next request.
 
-# ─── Platform (shared across all businesses) ──────────────────────────────
+# ─── Platform (shared) ────────────────────────────────────────────────────
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -31,29 +33,3 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
-
-# ─── Businesses (tenants) ─────────────────────────────────────────────────
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: pypes-prod
-  labels:
-    equity.io/tenant: pypes
-    equity.io/tenant-name: Pypes
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: hiringfunnel-prod
-  labels:
-    equity.io/tenant: hiringfunnel
-    equity.io/tenant-name: HiringFunnel
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: cjs-prod
-  labels:
-    equity.io/tenant: cjs
-    equity.io/tenant-name: CareerJumpship

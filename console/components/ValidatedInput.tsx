@@ -13,7 +13,7 @@ export const validators = {
     // RFC 1123 label subset: same as kebab but also enforced by k8s.
     pattern: /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/,
     message: "must be a valid Kubernetes namespace name",
-    example: "pypes-prod",
+    example: "acme-prod",
   },
   slug: {
     pattern: /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/,

@@ -4,14 +4,14 @@ import { core } from "@/lib/k8s";
 // label `equity.io/tenant`. The label value is the slug used in URLs; the
 // display name comes from `equity.io/tenant-name` (falls back to the slug).
 //
-// A tenant may own MULTIPLE namespaces later (e.g., pypes-prod + pypes-staging).
+// A tenant may own MULTIPLE namespaces later (e.g., acme-prod + acme-staging).
 // For now: one namespace per tenant. `namespaces` is a list so the model is
 // future-proof.
 
 export type Tenant = {
-  slug: string;             // "pypes"
-  name: string;             // "Pypes"
-  namespaces: string[];     // ["pypes-prod"]
+  slug: string;             // "acme"
+  name: string;             // "Acme"
+  namespaces: string[];     // ["acme-prod"]
 };
 
 export const MASTER_SLUG = "master";

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/hero.png" alt="equity-platform" width="100%"/>
+  <img src="local/hero.png" alt="equity-platform" width="100%"/>
 </div>
 
 <div align="center">
@@ -52,10 +52,10 @@ graph TD
         NA[NATS JetStream]
         PR[Prometheus + Grafana]
       end
-      subgraph "Tenants (businesses)"
-        P[pypes-prod ns]
-        H[hiringfunnel-prod ns]
-        C[cjs-prod ns]
+      subgraph "Tenants (you create these)"
+        T1[business-a-prod ns]
+        T2[business-b-prod ns]
+        T3[business-c-prod ns]
       end
     end
     U -->|Server Action: putFile| G
@@ -64,9 +64,9 @@ graph TD
     A -->|reconcile| ES
     A -->|reconcile| NA
     A -->|reconcile| PR
-    A -->|reconcile| P
-    A -->|reconcile| H
-    A -->|reconcile| C
+    A -->|reconcile| T1
+    A -->|reconcile| T2
+    A -->|reconcile| T3
     U -.->|read live state| A
     U -.->|read metrics| NA
 ```
@@ -78,7 +78,6 @@ equity-platform/
 ├── apps/            → ArgoCD Application manifests (children)
 ├── charts/          → per-app Helm values, pinned versions
 ├── console/         → Next.js 15 multi-tenant UI (see below)
-├── docs/            → hero image + additional docs
 └── .github/         → CI (shellcheck + yamllint + kubeconform) + CodeQL
 ```
 
@@ -115,7 +114,7 @@ cd ~/equity-platform
 ./local/up.sh
 # → creates kind cluster (~90s)
 # → installs ArgoCD v2.13.1 (~2min)
-# → applies tenant namespaces (pypes, hiringfunnel, cjs)
+# → applies platform namespaces (no tenants yet — you create them via the console)
 # → applies root app-of-apps if a git remote is set
 
 # 4. Start the console
@@ -163,9 +162,12 @@ Or set `NATS_MONITOR_URL` in `console/.env.local`. Full env template in `console
 
 ## Add a business
 
-Two-step, ~30 seconds:
+**Preferred: use the console.** Master view → **+ New Business** → fill in display name + slug + namespace → Save. The console:
+1. Commits a new namespace block to `bootstrap/00-namespaces.yaml` via GitHub
+2. Applies the namespace to the live cluster immediately
+3. Opens the new tenant's Profile tab so you can fill in brand, offer, legal, etc.
 
-**1.** Append a namespace block to `bootstrap/00-namespaces.yaml`:
+**By hand:** append a namespace block to `bootstrap/00-namespaces.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -177,9 +179,13 @@ metadata:
     equity.io/tenant-name: MyShop
 ```
 
-**2.** Apply — either re-run `./local/up.sh` (idempotent) or `kubectl apply -f bootstrap/00-namespaces.yaml`.
+Then `kubectl apply -f bootstrap/00-namespaces.yaml` or re-run `./local/up.sh` (idempotent).
 
-The console auto-discovers the new business on next request. It shows up in the sidebar under "Businesses" and gets its own drill-in view.
+Either way, the console auto-discovers the new tenant on next request — appears in the sidebar and gets its own drill-in view.
+
+### Business profile
+
+Each tenant has a declarative YAML profile at `businesses/<slug>.yaml` in the platform repo. Edit via the console (`/<slug>/profile`) or by hand. Fields: identity (LLC, domain, emails), brand (logo, colors, tagline), offer (price, Stripe IDs, CTA), copy (headlines, about, voice), legal (jurisdiction, EIN, policy URLs), integrations (GHL, n8n, Meta, GA, PostHog, Slack). Schema lives in `console/lib/business-profile.ts` — add a field there and the form regenerates.
 
 ---
 
