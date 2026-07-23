@@ -18,6 +18,7 @@ export default async function TenantLayout({ children, params }: Props) {
     { href: `/${slug}/cron`, label: "Cron" },
     { href: `/${slug}/email`, label: "Email" },
     { href: `/${slug}/events`, label: "Events" },
+    { href: `/${slug}/chat`, label: "Chat" },
     { href: `/${slug}/history`, label: "History" },
   ];
 
