@@ -3,6 +3,5 @@
   "buildCommand": "cd console && npm ci && npm run build",
   "outputDirectory": "console/.next",
   "installCommand": "cd console && npm ci",
-  "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- console"
+  "framework": "nextjs"
 }
