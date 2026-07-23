@@ -1,0 +1,64 @@
+# kube-prometheus-stack values.
+# Bundles: Prometheus + Alertmanager + Grafana + node-exporter + kube-state-metrics.
+# Chart version pinned in apps/prometheus-stack.yaml.
+#
+# Sized for local kind cluster. Prod deployment should:
+#   - bump prometheus retention (default 10d)
+#   - use a real StorageClass with adequate size
+#   - front Grafana with an Ingress + OIDC auth
+#   - configure alertmanager receivers (Slack, PagerDuty)
+
+fullnameOverride: prom-stack
+
+# CRDs installed automatically (kube-prometheus-stack chart ships them).
+# The equity-console reads Prometheus + Grafana via kubectl port-forward or
+# in-cluster Service DNS.
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    retentionSize: "10GB"
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits:   { cpu: 500m, memory: 1Gi }
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits:   { cpu: 200m, memory: 256Mi }
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+
+grafana:
+  enabled: true
+  adminPassword: "admin"   # LOCAL ONLY. Prod: ExternalSecret injecting a real password.
+  service:
+    type: ClusterIP
+    port: 80
+  # Sidecar auto-imports dashboards from ConfigMaps labeled grafana_dashboard=1.
+  # Drop dashboard JSON into charts/grafana-dashboards/*.json (future).
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      label: grafana_dashboard
+    datasources:
+      enabled: true
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 300m, memory: 512Mi }
+
+# node-exporter + kube-state-metrics are enabled by default; leaving alone.
