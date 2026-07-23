@@ -24,7 +24,7 @@ spec:
       helm:
         valueFiles:
           - $values/charts/envoy-gateway/values.yaml
-    - repoURL: ${GIT_REPO_URL}
+    - repoURL: https://github.com/jaredzwick/equity-platform.git
       targetRevision: HEAD
       ref: values
   destination:
