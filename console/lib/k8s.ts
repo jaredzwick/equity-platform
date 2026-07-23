@@ -1,4 +1,5 @@
 import { KubeConfig, CoreV1Api, BatchV1Api, CustomObjectsApi } from "@kubernetes/client-node";
+import type { V1CronJob } from "@kubernetes/client-node";
 
 let _kc: KubeConfig | null = null;
 
@@ -41,14 +42,14 @@ export type ArgoApp = {
 };
 
 export async function listArgoApps(): Promise<ArgoApp[]> {
-  const res = await custom().listNamespacedCustomObject({
-    group: "argoproj.io",
-    version: "v1alpha1",
-    namespace: "argocd",
-    plural: "applications",
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((res as any).items ?? []) as ArgoApp[];
+  const res = await custom().listNamespacedCustomObject(
+    "argoproj.io",
+    "v1alpha1",
+    "argocd",
+    "applications",
+  );
+  const body = res.body as { items?: ArgoApp[] };
+  return body.items ?? [];
 }
 
 export type CronJobRow = {
@@ -63,13 +64,18 @@ export type CronJobRow = {
 
 export async function listCronJobs(): Promise<CronJobRow[]> {
   const res = await batch().listCronJobForAllNamespaces();
-  return (res.items ?? []).map((cj) => ({
+  const items: V1CronJob[] = res.body.items ?? [];
+  return items.map((cj) => ({
     namespace: cj.metadata?.namespace ?? "",
     name: cj.metadata?.name ?? "",
     schedule: cj.spec?.schedule ?? "",
     suspend: !!cj.spec?.suspend,
-    lastScheduleTime: cj.status?.lastScheduleTime?.toString() ?? null,
-    lastSuccessfulTime: cj.status?.lastSuccessfulTime?.toString() ?? null,
+    lastScheduleTime: cj.status?.lastScheduleTime
+      ? new Date(cj.status.lastScheduleTime).toISOString()
+      : null,
+    lastSuccessfulTime: cj.status?.lastSuccessfulTime
+      ? new Date(cj.status.lastSuccessfulTime).toISOString()
+      : null,
     activeCount: cj.status?.active?.length ?? 0,
   }));
 }
