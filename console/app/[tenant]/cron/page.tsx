@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listCronJobs } from "@/lib/k8s";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
 import { notFound } from "next/navigation";
@@ -29,8 +30,24 @@ export default async function CronPage({ params }: Props) {
   const nsFilter = slug === MASTER_SLUG ? undefined : tenant.namespaces;
   const rows = (await listCronJobs(nsFilter).catch(() => [])).sort((a, b) => a.name.localeCompare(b.name));
 
+  const isMaster = slug === MASTER_SLUG;
+
   return (
     <div className="max-w-6xl">
+      <div className="flex items-baseline justify-between mb-4">
+        <div className="text-sm text-[color:var(--color-muted)]">
+          {rows.length} cronjob{rows.length === 1 ? "" : "s"} · red dot = no successful run in 24h
+        </div>
+        {!isMaster && (
+          <Link
+            href={`/${slug}/cron/new`}
+            className="text-sm px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 font-medium"
+          >
+            + New CronJob
+          </Link>
+        )}
+      </div>
+
       <div className="border border-[color:var(--color-border)] rounded overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-white/5">
