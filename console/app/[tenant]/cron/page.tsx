@@ -1,6 +1,10 @@
 import { listCronJobs } from "@/lib/k8s";
+import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+type Props = { params: Promise<{ tenant: string }> };
 
 function relative(ts: string | null): string {
   if (!ts) return "never";
@@ -11,46 +15,22 @@ function relative(ts: string | null): string {
   return `${Math.floor(ms / 86_400_000)}d ago`;
 }
 
-// A CronJob is "stale" if its last successful run is older than 2x its schedule
-// interval. This is a rough heuristic — good enough to spot obviously broken jobs.
-function staleness(row: {
-  schedule: string;
-  lastSuccessfulTime: string | null;
-  suspend: boolean;
-}): "ok" | "stale" | "never" | "suspended" {
+function staleness(row: { lastSuccessfulTime: string | null; suspend: boolean }): "ok" | "stale" | "never" | "suspended" {
   if (row.suspend) return "suspended";
   if (!row.lastSuccessfulTime) return "never";
-  // We don't parse cron here — just flag anything >24h old as stale for now.
-  // Future: parse `row.schedule` (e.g. via cronstrue or a real cron parser)
-  // and compare against the actual interval * 2.
-  const ageMs = Date.now() - new Date(row.lastSuccessfulTime).getTime();
-  return ageMs > 24 * 60 * 60 * 1000 ? "stale" : "ok";
+  return Date.now() - new Date(row.lastSuccessfulTime).getTime() > 24 * 60 * 60 * 1000 ? "stale" : "ok";
 }
 
-export default async function CronPage() {
-  let rows: Awaited<ReturnType<typeof listCronJobs>> = [];
-  let err: string | null = null;
-  try {
-    rows = await listCronJobs();
-  } catch (e) {
-    err = e instanceof Error ? e.message : String(e);
-  }
+export default async function CronPage({ params }: Props) {
+  const { tenant: slug } = await params;
+  const tenant = await resolveTenant(slug);
+  if (!tenant) notFound();
 
-  rows.sort((a, b) => a.name.localeCompare(b.name));
+  const nsFilter = slug === MASTER_SLUG ? undefined : tenant.namespaces;
+  const rows = (await listCronJobs(nsFilter).catch(() => [])).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="max-w-6xl">
-      <h1 className="text-2xl font-semibold mb-2">Cron</h1>
-      <p className="text-sm text-[color:var(--color-muted)] mb-6">
-        Every CronJob across every namespace. Red = stale (no successful run in 24h). Yellow = suspended.
-      </p>
-
-      {err && (
-        <div className="mb-6 p-4 border border-red-900 rounded bg-red-950/40 text-sm text-red-400">
-          {err}
-        </div>
-      )}
-
       <div className="border border-[color:var(--color-border)] rounded overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-white/5">
@@ -67,7 +47,7 @@ export default async function CronPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={6} className="p-6 text-center text-[color:var(--color-muted)]">
-                  No CronJobs in the cluster.
+                  No CronJobs.
                 </td>
               </tr>
             )}
@@ -80,9 +60,7 @@ export default async function CronPage() {
                 "bg-amber-500";
               return (
                 <tr key={`${r.namespace}/${r.name}`} className="border-t border-[color:var(--color-border)]">
-                  <td className="p-3">
-                    <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={s} />
-                  </td>
+                  <td className="p-3"><span className={`inline-block w-2 h-2 rounded-full ${color}`} title={s} /></td>
                   <td className="p-3 text-[color:var(--color-muted)]">{r.namespace}</td>
                   <td className="p-3 font-medium">{r.name}</td>
                   <td className="p-3 font-mono text-xs">{r.schedule}</td>

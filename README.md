@@ -1,192 +1,267 @@
-# equity-platform
+<div align="center">
+  <img src="docs/hero.png" alt="equity-platform" width="100%"/>
+</div>
 
-**Zero-cost, one-command Kubernetes platform for solo founders and small teams.**
-kind + ArgoCD + External Secrets + NATS JetStream, wired as an app-of-apps.
+<div align="center">
 
-The same manifests run locally on kind ($0) and in prod on DigitalOcean or
-any managed Kubernetes. Migrate a workload one slice at a time.
+[![MIT License](https://img.shields.io/badge/license-MIT-6366f1)](LICENSE)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.30+-326ce5)](https://kubernetes.io/)
+[![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD_2.13-ef7b4d)](https://argo-cd.readthedocs.io/)
+[![NATS](https://img.shields.io/badge/events-NATS_JetStream-27aae1)](https://nats.io/)
+[![Next.js](https://img.shields.io/badge/console-Next.js_15-000000)](https://nextjs.org/)
+
+**One-command Kubernetes platform for the sub-agency model.**
+Run multiple businesses on shared infra. Boot locally in 3 min ($0). Provision new apps from the UI — every change is a git commit, every rollback is a `git revert`.
+
+[Quick Start](#-quick-start) · [The console](#-the-console) · [Add a business](#-add-a-business) · [GitOps write-back](#-gitops-write-back) · [Reproducibility](#-reproducibility-contract)
+
+</div>
 
 ---
 
 ## Why this exists
 
-Every new business shouldn't re-derive: "how do I run ArgoCD?", "how do I
-manage secrets?", "how do I stand up an event bus?". This is a small
-opinionated scaffold that says: here is a platform. Fork it, point it at
-your git repo, run one command.
+Running multiple businesses on Kubernetes normally means re-deriving the same infra decisions per business, wiring GitOps by hand, and juggling three different UIs to see what's actually running. This repo bundles all of that into **one repo, one command, one console**.
 
-**Boring by default.** ArgoCD, ingress-nginx, External Secrets Operator, NATS
-JetStream. All battle-tested, all pinned.
-
-**Reproducible locally.** kind gives you a real cluster on your Mac in ~90s.
-The manifests apply identically in prod.
-
-**GitOps native.** ArgoCD reconciles from git. `kubectl apply` is the
-bootstrap, not the deploy path.
+**What you get out of the box:**
+- Local kind cluster (~3 min boot, $0)
+- ArgoCD wired app-of-apps, pinned versions
+- External Secrets Operator, NATS JetStream, Prometheus + Grafana as ArgoCD Applications
+- **Multi-tenant Next.js console:** master view aggregating every business + per-business drill-in
+- **UI-driven app provisioning:** fill a form → commit lands in git → ArgoCD reconciles
+- **Rollback via git revert:** history page links straight to GitHub's revert UI
+- One script up, one script down. No manual state, ever.
 
 ---
 
-## Quick start
+## Architecture
+
+```mermaid
+graph TD
+    subgraph "You"
+      U[Console UI]
+    end
+    subgraph "GitHub"
+      G[equity-platform repo]
+    end
+    subgraph "Kubernetes cluster"
+      A[ArgoCD]
+      subgraph "Platform (shared)"
+        NG[ingress-nginx]
+        ES[External Secrets]
+        NA[NATS JetStream]
+        PR[Prometheus + Grafana]
+      end
+      subgraph "Tenants (businesses)"
+        P[pypes-prod ns]
+        H[hiringfunnel-prod ns]
+        C[cjs-prod ns]
+      end
+    end
+    U -->|Server Action: putFile| G
+    G -.->|poll every ~1 min| A
+    A -->|reconcile| NG
+    A -->|reconcile| ES
+    A -->|reconcile| NA
+    A -->|reconcile| PR
+    A -->|reconcile| P
+    A -->|reconcile| H
+    A -->|reconcile| C
+    U -.->|read live state| A
+    U -.->|read metrics| NA
+```
+
+```
+equity-platform/
+├── local/           → kind cluster + one-command up.sh / down.sh
+├── bootstrap/       → ArgoCD install + root app-of-apps + tenant namespaces
+├── apps/            → ArgoCD Application manifests (children)
+├── charts/          → per-app Helm values, pinned versions
+├── console/         → Next.js 15 multi-tenant UI (see below)
+├── docs/            → hero image + additional docs
+└── .github/         → CI (shellcheck + yamllint + kubeconform) + CodeQL
+```
+
+Inside `console/app/`:
+```
+[tenant]/
+├── page.tsx         → per-tenant overview
+├── apps/
+│   ├── page.tsx     → ArgoCD Applications table
+│   └── new/         → provision form + Server Action (writes to git)
+├── cron/            → CronJobs table with staleness heuristic
+├── email/           → deliverability page (per-tenant Postgres)
+├── events/          → NATS JetStream streams + consumers
+└── history/         → recent commits + revert links
+```
+
+Routes: `/master` = aggregate, `/<slug>` = per-business drill-in.
+
+---
+
+## Quick Start
+
+**Requirements:** Docker, Node.js 20+, [Homebrew](https://brew.sh/) on macOS (or your platform's kind/kubectl/helm binaries).
 
 ```bash
-brew install kind kubectl helm      # one-time
+# 1. Install tools
+brew install kind kubectl helm
+
+# 2. Clone
 git clone https://github.com/jaredzwick/equity-platform ~/equity-platform
 cd ~/equity-platform
-./local/up.sh                        # ~3 min: kind + ArgoCD + platform apps
+
+# 3. Boot the cluster
+./local/up.sh
+# → creates kind cluster (~90s)
+# → installs ArgoCD v2.13.1 (~2min)
+# → applies tenant namespaces (pypes, hiringfunnel, cjs)
+# → applies root app-of-apps if a git remote is set
+
+# 4. Start the console
+cd console
+npm install
+npm run dev
+# → open http://localhost:3030
 ```
 
-That's it. You now have a running Kubernetes cluster with ArgoCD ready to
-reconcile from a git repo.
+You'll land on `/master`. Click a business in the sidebar to drill in.
 
-### Verified output from a real run
-
-```
-==> Ensuring kind cluster 'equity-local' exists
- ✓ Ensuring node image (kindest/node:v1.36.1)
- ✓ Starting control-plane
- ✓ Installing CNI
- ✓ Installing StorageClass
-Set kubectl context to "kind-equity-local"
-==> Applying namespaces
-namespace/argocd created
-namespace/ingress-nginx created
-namespace/external-secrets created
-namespace/nats created
-namespace/business-prod created
-==> Installing ArgoCD (pinned version)
-    ArgoCD version: v2.13.1
-==> Waiting for ArgoCD server to be ready (may take 2-3 min)
-deployment.apps/argocd-server condition met
-✓ Platform is up.
-```
-
-7/7 ArgoCD pods `Running`, admin password retrievable, UI responds with HTTP 307 in 13ms.
-
-### Access ArgoCD
-
-```bash
-kubectl port-forward -n argocd svc/argocd-server 8080:80
-open http://localhost:8080
-# username: admin
-# password:
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-### Enable GitOps reconciliation
-
-`up.sh` runs in **local-only mode** until it can find a git remote to
-reconcile from. To enable the full loop:
-
-```bash
-git remote add origin https://github.com/<your-username>/equity-platform.git
-git push -u origin main
-./local/up.sh   # re-run; picks up the remote, applies root app-of-apps
-```
-
-After the second `up.sh`, `kubectl -n argocd get applications` shows the
-root app plus one child Application per file under `apps/`.
-
-### Tear down
-
+**Tear down when done:**
 ```bash
 ./local/down.sh
 ```
 
-Idempotent. Destroys the kind cluster. All in-cluster state is lost — this
-is a dev cluster, back up anything precious first.
+Idempotent. Destroys the kind cluster. Filesystem stays clean.
 
 ---
 
-## What's inside
+## The console
 
-```
-equity-platform/
-├── local/                    # kind cluster + up.sh / down.sh
-│   ├── kind-cluster.yaml     # kind config (port mappings for ingress + nats)
-│   ├── up.sh                 # bootstrap: cluster + ArgoCD + root app
-│   └── down.sh               # tear down cluster
-├── bootstrap/                # ArgoCD install + root app-of-apps
-│   ├── 00-namespaces.yaml
-│   ├── 01-argocd-install.yaml   # version pin (ConfigMap referenced by up.sh)
-│   └── 03-root-app.yaml         # points at apps/, self-heals + prunes
-├── apps/                     # ArgoCD Application manifests (children)
-│   ├── ingress-nginx.yaml       # 4.11.3
-│   ├── external-secrets.yaml    # 0.10.5
-│   └── nats.yaml                # 1.2.11 (JetStream enabled)
-├── charts/                   # per-app Helm values
-│   ├── ingress-nginx/values.yaml
-│   ├── external-secrets/values.yaml
-│   └── nats/values.yaml         # single-node + file-backed JetStream
-├── VERSION                   # semver of the platform contract
-└── LICENSE                   # MIT
+The console is the whole UX. Sidebar lists every business (auto-discovered from namespace labels). Each business has 6 tabs:
+
+| Tab | What it shows | Data source |
+|---|---|---|
+| **Overview** | Apps + CronJobs at a glance, stale-cron warnings | k8s API (filtered by tenant ns) |
+| **Apps** | ArgoCD Applications table, one-click "+ New Application" | k8s API (`argoproj.io/Applications`) |
+| **Cron** | Every CronJob, staleness heuristic (red if no success in 24h) | k8s BatchV1 API |
+| **Email** | Deliverability, bounce rate, complaint rate | Per-tenant Postgres `email_events` (opt-in) |
+| **Events** | NATS JetStream streams + consumers + lag | NATS `/jsz` monitoring endpoint |
+| **History** | Recent commits to this repo + revert links | GitHub API |
+
+Master view (`/master`) aggregates across every business.
+
+### NATS monitoring needs a port-forward locally
+
+```bash
+kubectl port-forward -n nats svc/nats-headless 8222:8222 &
 ```
 
-### Add a new platform component
-
-1. Write `apps/<name>.yaml` (an ArgoCD Application manifest).
-2. Write `charts/<name>/values.yaml` (the Helm values).
-3. Commit + push.
-4. ArgoCD reconciles on next sync (a few seconds). No re-run of `up.sh` needed.
-
-### Upgrade an existing chart
-
-1. Bump `spec.source.targetRevision` in `apps/<name>.yaml`.
-2. Update `charts/<name>/values.yaml` if the new chart changes value shape.
-3. Commit + push. ArgoCD upgrades in-place.
+Or set `NATS_MONITOR_URL` in `console/.env.local`. Full env template in `console/.env.example`.
 
 ---
 
-## The GitOps loop
+## Add a business
+
+Two-step, ~30 seconds:
+
+**1.** Append a namespace block to `bootstrap/00-namespaces.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myshop-prod
+  labels:
+    equity.io/tenant: myshop
+    equity.io/tenant-name: MyShop
+```
+
+**2.** Apply — either re-run `./local/up.sh` (idempotent) or `kubectl apply -f bootstrap/00-namespaces.yaml`.
+
+The console auto-discovers the new business on next request. It shows up in the sidebar under "Businesses" and gets its own drill-in view.
+
+---
+
+## GitOps write-back
+
+The console can provision new ArgoCD Applications for you. **Every change is a commit; every commit is reversible.**
+
+**Enable it:**
+
+1. Create a [fine-grained GitHub PAT](https://github.com/settings/personal-access-tokens/new) with **Contents: Read and Write** scoped to this repo.
+2. In `console/.env.local`:
+   ```
+   GITHUB_TOKEN=github_pat_...
+   GITHUB_REPO=jaredzwick/equity-platform
+   ```
+3. Restart `npm run dev`.
+
+**Use it:** Sidebar → pick a business → **Apps** → **+ New Application**.
 
 ```
-you edit git    →    git push    →    ArgoCD reconciles    →    cluster changes
-     ▲                                        │
-     └────────────────────────────────────────┘
-                (or: --self-heal reverts drift)
+     Form submit
+         │
+         ▼
+   Server Action  ─▶  GitHub API  ─▶  2 commits land in the repo
+         │                                    │
+         │                                    ▼
+         │                          ArgoCD polls (~1 min)
+         │                                    │
+         ▼                                    ▼
+    Redirect to             ArgoCD reconciles new Application
+    /<tenant>/apps                            │
+                                              ▼
+                                       App live in cluster
 ```
 
-The root app-of-apps in `bootstrap/03-root-app.yaml` watches `apps/*.yaml`.
-Each child Application watches its own chart + values. `syncPolicy.automated`
-+ `selfHeal` means the cluster converges to git, always. Drift = revert.
+**Rollback:** **History** tab → **revert →** on any commit → opens GitHub's one-click revert PR → merge → ArgoCD reconciles previous state (~1 min).
+
+---
+
+## Reproducibility contract
+
+**The whole system boots and tears down with two scripts.** This is the promise:
+
+```bash
+./local/up.sh      # boot: kind + ArgoCD + platform apps + tenants
+./local/down.sh    # nuke: everything gone
+```
+
+Nothing is manual. Every infra change is a file in this repo. Every runtime change is a commit in this repo (via console) or a `kubectl apply` in your terminal.
+
+Verified end-to-end on every push: shellcheck + yamllint + kubeconform against `bootstrap/` and `apps/`. Required to merge. CodeQL runs weekly.
 
 ---
 
 ## Design decisions
 
-| Choice | Alternative considered | Why this |
+| Choice | Alternative | Why this |
 |---|---|---|
-| **kind** (local) | k3d, minikube, Docker Desktop | Best ArgoCD docs, mainstream, ~90s boot |
-| **ArgoCD** (GitOps) | Flux, no GitOps | ArgoCD UI is a real observability surface; Flux is CLI-first |
-| **App-of-apps** | ApplicationSet | Simpler mental model; ApplicationSet is worth it once you have >20 apps |
-| **NATS JetStream** (bus) | Redis Streams, Kafka, Postgres LISTEN/NOTIFY | JetStream = persistent + replayable + no ZooKeeper; boring at solo-founder scale |
-| **External Secrets Operator** | SOPS, Sealed Secrets, raw Secrets | Backend-agnostic; swap AWS/GCP/1Password/DO without changing app code |
-| **envsubst for git URL** | kustomize, ApplicationSet | Zero extra tooling; matches the pattern many k8s shops use for image tags |
+| **kind** local | k3d / minikube | Best ArgoCD-local docs, ~90s boot |
+| **ArgoCD** GitOps | Flux, no GitOps | Better UI = better observability for solo devs |
+| **App-of-apps** | ApplicationSet | Simpler; upgrade when >20 apps |
+| **NATS JetStream** | Redis Streams / Kafka | Persistent + replayable + no ZooKeeper |
+| **External Secrets Operator** | SOPS / Sealed Secrets | Backend-agnostic — swap DO Secrets / 1Password / SOPS |
+| **Namespace-per-tenant** | Cluster-per-tenant | Cheaper for solo shops |
+| **Contents API for write-back** | Local git clone + shell out | No git state to manage; works local + in-cluster |
+| **2 commits per new app** | Git Data API (atomic) | Simpler; upgrade when atomicity bites |
+| **Revert via GitHub link** | In-console revert | Keeps destructive actions in the review-friendly flow |
 
 ---
 
-## Roadmap (short)
+## Roadmap
 
-- [ ] Grafana + Prometheus + Loki stack (observability)
-- [ ] cert-manager + letsencrypt ClusterIssuer
-- [ ] Prometheus AlertManager → Slack notifier
-- [ ] Backstage-style dashboard for one-glance infra visibility (see [issue #TBD])
-- [ ] Prod cluster manifests (DO Kubernetes overlays)
-- [ ] Sample services template repo showing an app deploying via this platform
-
----
-
-## Prior art / thanks
-
-- [Argo CD](https://argo-cd.readthedocs.io/) — the GitOps engine
-- [kind](https://kind.sigs.k8s.io/) — Kubernetes in Docker
-- [External Secrets Operator](https://external-secrets.io/)
-- [NATS](https://nats.io/) — the event bus
-- The pattern is standard app-of-apps; nothing novel here. The value is that
-  it's fork-and-go, pinned, and verified.
+- [ ] cert-manager + Let's Encrypt ClusterIssuer
+- [ ] Alertmanager → Slack integration
+- [ ] Per-tenant NATS subject prefixes (`events.<tenant>.>`)
+- [ ] Grafana panels embedded in tenant pages
+- [ ] Prod overlay for DO Kubernetes
+- [ ] 1-commit-per-app via Git Data API (atomicity)
+- [ ] In-console diff + revert (no GitHub round-trip)
 
 ---
 
 ## License
 
-MIT. Copyright © 2026 Pypes LLC. See [LICENSE](./LICENSE).
+MIT © 2026 Pypes LLC. See [LICENSE](./LICENSE).

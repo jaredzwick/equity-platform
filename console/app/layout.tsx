@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { discoverTenants } from "@/lib/tenants";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,35 +8,57 @@ export const metadata: Metadata = {
   description: "One-pane visibility for the equity-platform stack",
 };
 
-const nav = [
-  { href: "/", label: "Overview" },
-  { href: "/apps", label: "Apps" },
-  { href: "/cron", label: "Cron" },
-  { href: "/email", label: "Email" },
-  { href: "/events", label: "Events" },
-];
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const tenants = await discoverTenants().catch(() => []);
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen">
         <div className="flex min-h-screen">
-          <aside className="w-56 border-r border-[color:var(--color-border)] p-6 flex flex-col gap-1">
-            <div className="mb-6">
+          <aside className="w-64 border-r border-[color:var(--color-border)] p-5 flex flex-col gap-6">
+            <div>
               <div className="text-lg font-semibold">equity-console</div>
-              <div className="text-xs text-[color:var(--color-muted)]">v0.1</div>
+              <div className="text-xs text-[color:var(--color-muted)]">v0.2 · multi-tenant</div>
             </div>
-            <nav className="flex flex-col gap-1">
-              {nav.map((item) => (
+
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-[color:var(--color-muted)] mb-2 px-2">
+                Businesses
+              </div>
+              <nav className="flex flex-col gap-0.5">
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className="px-3 py-2 rounded hover:bg-white/5 text-sm"
+                  href="/master"
+                  className="px-3 py-2 rounded hover:bg-white/5 text-sm flex items-center justify-between"
                 >
-                  {item.label}
+                  <span className="font-medium">All businesses</span>
+                  <span className="text-[10px] text-[color:var(--color-muted)]">agency</span>
                 </Link>
-              ))}
-            </nav>
+                {tenants.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-[color:var(--color-muted)]">
+                    No tenants labeled yet
+                  </div>
+                )}
+                {tenants.map((t) => (
+                  <Link
+                    key={t.slug}
+                    href={`/${t.slug}`}
+                    className="px-3 py-2 rounded hover:bg-white/5 text-sm flex items-center justify-between"
+                  >
+                    <span>{t.name}</span>
+                    <span className="text-[10px] text-[color:var(--color-muted)]">
+                      {t.namespaces.length} ns
+                    </span>
+                  </Link>
+                ))}
+              </nav>
+            </div>
+
+            <div className="mt-auto text-[10px] text-[color:var(--color-muted)] px-2 leading-relaxed">
+              Add a business:
+              <br />
+              label a namespace with{" "}
+              <code className="text-neutral-400">equity.io/tenant</code>
+            </div>
           </aside>
           <main className="flex-1 p-8 overflow-auto">{children}</main>
         </div>
