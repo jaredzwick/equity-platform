@@ -22,13 +22,10 @@ export default function MasterView({ businesses }: Props) {
 
   return (
     <div className="max-w-6xl">
-      <div className="mb-8 flex items-baseline justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Agency</h1>
-          <p className="text-sm text-[color:var(--color-muted)] mt-1">
-            {businesses.length} business{businesses.length === 1 ? "" : "es"} · click a card to drill in
-          </p>
-        </div>
+      <div className="mb-6 flex items-baseline justify-between gap-4">
+        <p className="text-sm text-[color:var(--color-muted)]">
+          {businesses.length} business{businesses.length === 1 ? "" : "es"} · click a card to drill in
+        </p>
         <div className="flex items-center gap-3">
           <input
             type="search"
