@@ -15,6 +15,13 @@ permissions:
 
 jobs:
   analyze:
+    # CodeQL requires GitHub Advanced Security on private repos. This template
+    # is dual-published: public `equity-platform` (GHAS-eligible via free
+    # public tier) + private `equity-private` mirror (GHAS is paid on
+    # personal accounts). Only run on the public repo. If you fork, either
+    # keep this condition and add your own public slug, or drop it and
+    # enable GHAS on the fork.
+    if: github.repository == 'jaredzwick/equity-platform'
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     strategy:
