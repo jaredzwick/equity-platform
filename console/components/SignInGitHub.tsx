@@ -2,6 +2,82 @@
 
 import { useEffect, useState } from "react";
 
+type InstallStatus =
+  | { checking: true }
+  | { checking: false; installed: true }
+  | { checking: false; installed: false; installUrl: string; targetRepo: string }
+  | { checking: false; error: string };
+
+function AuthedChip({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+  const [install, setInstall] = useState<InstallStatus>({ checking: true });
+
+  useEffect(() => {
+    fetch("/api/auth/install-status")
+      .then((r) => r.json())
+      .then((data: {
+        installed?: boolean;
+        installUrl?: string;
+        targetRepo?: string;
+        error?: string;
+      }) => {
+        if (data.error) {
+          setInstall({ checking: false, error: data.error });
+        } else if (data.installed) {
+          setInstall({ checking: false, installed: true });
+        } else {
+          setInstall({
+            checking: false,
+            installed: false,
+            installUrl: data.installUrl!,
+            targetRepo: data.targetRepo!,
+          });
+        }
+      })
+      .catch((e) =>
+        setInstall({ checking: false, error: e instanceof Error ? e.message : String(e) }),
+      );
+  }, []);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 group">
+        {user.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatarUrl} alt={user.login} className="w-5 h-5 rounded-full" />
+        ) : null}
+        <span className="text-xs flex-1 truncate">{user.login}</span>
+        <button
+          onClick={onSignOut}
+          className="text-[10px] text-[color:var(--color-muted)] group-hover:text-[color:var(--color-fg)]"
+          title="Sign out"
+        >
+          ✕
+        </button>
+      </div>
+
+      {!install.checking && "installed" in install && !install.installed && (
+        <a
+          href={install.installUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="block px-3 py-2 rounded border border-amber-500/40 bg-amber-950/40 text-[11px] hover:bg-amber-950/60"
+        >
+          <div className="text-amber-200 font-medium">Install app on your repo</div>
+          <div className="text-neutral-400 mt-0.5">
+            Writes to <code className="text-neutral-300">{install.targetRepo}</code> need the
+            equity-console app installed there.
+          </div>
+        </a>
+      )}
+      {!install.checking && "installed" in install && install.installed && (
+        <div className="px-3 py-1 text-[10px] text-emerald-400/70">
+          ✓ App installed on your repo
+        </div>
+      )}
+    </div>
+  );
+}
+
 type User = { login: string; avatarUrl: string };
 
 // Sign-in states:
@@ -113,22 +189,7 @@ export default function SignInGitHub() {
   if (phase.kind === "unknown") return <div className="text-xs text-[color:var(--color-muted)]">…</div>;
 
   if (phase.kind === "authed") {
-    return (
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 group">
-        {phase.user.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={phase.user.avatarUrl} alt={phase.user.login} className="w-5 h-5 rounded-full" />
-        ) : null}
-        <span className="text-xs flex-1 truncate">{phase.user.login}</span>
-        <button
-          onClick={signOut}
-          className="text-[10px] text-[color:var(--color-muted)] group-hover:text-[color:var(--color-fg)]"
-          title="Sign out"
-        >
-          ✕
-        </button>
-      </div>
-    );
+    return <AuthedChip user={phase.user} onSignOut={signOut} />;
   }
 
   if (phase.kind === "waiting" || phase.kind === "polling") {
