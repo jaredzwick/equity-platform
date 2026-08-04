@@ -8,6 +8,7 @@ const tabs = [
   { href: "/master/aggregate", label: "Aggregate observability", exact: false },
   { href: "/master/email", label: "Email", exact: false },
   { href: "/master/settings", label: "Agency settings", exact: false },
+  { href: "/master/github", label: "GitHub", exact: false },
 ];
 
 export default function MasterTabs() {

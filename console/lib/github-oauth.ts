@@ -70,6 +70,71 @@ export async function pollDeviceFlow(deviceCode: string): Promise<DevicePollResu
   return { status: "error", error: data.error_description ?? data.error ?? "unknown" };
 }
 
+// Check whether the equity-console GitHub App is installed on the target
+// repo for a given user token. Shared between /api/auth/install-status and
+// server components that need the same signal.
+const APP_SLUG = "equity-console";
+
+export type InstallStatus =
+  | { installed: true; targetRepo: string; installationId: number }
+  | { installed: false; targetRepo: string; installUrl: string };
+
+export async function checkAppInstall(
+  token: string,
+  targetRepo: string,
+): Promise<InstallStatus> {
+  const [owner] = targetRepo.split("/");
+  const installUrl = `https://github.com/apps/${APP_SLUG}/installations/new`;
+
+  const res = await fetch("https://api.github.com/user/installations", {
+    headers: {
+      "Accept": "application/vnd.github+json",
+      "Authorization": `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`GET /user/installations → ${res.status}`);
+  const data = (await res.json()) as {
+    installations: Array<{ id: number; account: { login: string } }>;
+  };
+
+  const installations = data.installations.filter(
+    (i) => i.account.login.toLowerCase() === owner.toLowerCase(),
+  );
+
+  if (installations.length === 0) {
+    return { installed: false, targetRepo, installUrl };
+  }
+
+  for (const inst of installations) {
+    const reposRes = await fetch(
+      `https://api.github.com/user/installations/${inst.id}/repositories`,
+      {
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        cache: "no-store",
+      },
+    );
+    if (!reposRes.ok) continue;
+    const repos = (await reposRes.json()) as {
+      repositories: Array<{ full_name: string }>;
+    };
+    if (
+      repos.repositories.some(
+        (r) => r.full_name.toLowerCase() === targetRepo.toLowerCase(),
+      )
+    ) {
+      return { installed: true, targetRepo, installationId: inst.id };
+    }
+  }
+
+  return { installed: false, targetRepo, installUrl };
+}
+
 // Get the user's login + avatar with an access token. Used to cache identity
 // in the session and to render the "signed in as X" chip.
 export async function fetchUser(token: string): Promise<{ login: string; avatarUrl: string }> {
