@@ -1,17 +1,113 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import "./globals.css";
 
+const SITE_URL = "https://lamboapp.com";
+
 export const metadata: Metadata = {
-  title: "equity-platform — Run every business on one Kubernetes platform",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "LamboApp — Acquire cash-flowing SMBs (not meme stocks)",
+    template: "%s · LamboApp",
+  },
   description:
-    "Boot a multi-tenant Kubernetes stack for every business you own with one command. GitOps by default. Console-driven. Local in 3 minutes.",
+    "LamboApp screens ~100 businesses for sale every day across 30+ brokers. Claude reads every listing, flags the scams, scores the winners, hands you a 1-paragraph thesis. Stop yolo'ing SPY puts. Start acquiring cash-flowing SMBs at 3x SDE.",
+  keywords: [
+    "businesses for sale",
+    "acquisition entrepreneur",
+    "search fund",
+    "SMB acquisition",
+    "SDE multiple",
+    "buy a business",
+    "BizBuySell",
+    "Flippa",
+    "Empire Flippers",
+    "Quiet Light",
+    "deal sourcing",
+    "M&A screening",
+    "AI due diligence",
+    "cash flow business",
+    "roll-up",
+    "holdco",
+    "ETA",
+    "microacquisition",
+  ],
+  authors: [{ name: "Pypes LLC" }],
+  creator: "Pypes LLC",
+  publisher: "Pypes LLC",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
-    title: "equity-platform",
-    description:
-      "One-command Kubernetes for running many businesses on shared infra.",
     type: "website",
+    siteName: "LamboApp",
+    title: "LamboApp — Acquire cash-flowing SMBs (not meme stocks)",
+    description:
+      "AI-screened businesses for sale, ranked by fit score. ~100 deals a day from 30+ brokers. Every listing gets a thesis + red flags. When lambo? Now.",
+    url: SITE_URL,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@lamboapp",
+    creator: "@lamboapp",
+    title: "LamboApp — Acquire cash-flowing SMBs (not meme stocks)",
+    description:
+      "Stop yolo'ing SPY puts. Start acquiring SMBs at 3x SDE. AI screens 100 deals/day, flags the scams, scores the winners.",
+  },
+  category: "finance",
+  applicationName: "LamboApp",
+  referrer: "origin-when-cross-origin",
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  colorScheme: "dark",
+};
+
+const orgJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "LamboApp",
+  url: SITE_URL,
+  logo: `${SITE_URL}/icon.svg`,
+  description:
+    "AI-powered deal sourcing for acquisition entrepreneurs. Screens ~100 businesses for sale daily across 30+ brokers.",
+  sameAs: ["https://github.com/jaredzwick/equity-platform"],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "LamboApp",
+  url: SITE_URL,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/deal/{search_term_string}`,
+    "query-input": "required name=search_term_string",
   },
 };
 
@@ -22,12 +118,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body className="min-h-screen flex flex-col overflow-x-hidden">
         <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-black/40 backdrop-blur-xl supports-[backdrop-filter]:bg-black/30">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-white">
+            <Link href="/" className="flex items-center gap-2 font-bold tracking-tight text-white">
               <LogoMark />
-              <span>equity-platform</span>
+              <span className="bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-lg italic text-transparent">
+                LAMBOAPP
+              </span>
             </Link>
             <nav className="hidden items-center gap-1 text-sm text-white/60 md:flex">
               <Link href="/#how" className="rounded-md px-3 py-1.5 hover:bg-white/5 hover:text-white">How it works</Link>
@@ -46,13 +154,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <>
                   <Link
                     href="/onboarding"
-                    className="hidden items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:shadow-indigo-500/40 sm:inline-flex"
+                    className="hidden items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-4 py-2 text-xs font-bold uppercase tracking-wide text-black shadow-lg shadow-orange-500/30 transition hover:shadow-orange-500/60 sm:inline-flex"
                   >
-                    Continue setup
+                    Continue printing
                   </Link>
                   {avatar ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={avatar} alt={login} className="h-8 w-8 rounded-full ring-2 ring-white/10" />
+                    <img src={avatar} alt={login} className="h-8 w-8 rounded-full ring-2 ring-yellow-400/40" />
                   ) : (
                     <div className="h-8 w-8 rounded-full bg-white/10" />
                   )}
@@ -60,7 +168,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ) : (
                 <a
                   href="/api/auth/login"
-                  className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black shadow-lg transition hover:bg-white/90"
+                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-4 py-2 text-xs font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
                 >
                   Sign in
                 </a>
@@ -77,18 +185,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div>
                 <div className="flex items-center gap-2 text-white">
                   <LogoMark />
-                  <span className="font-semibold">equity-platform</span>
+                  <span className="bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500 bg-clip-text font-bold italic text-transparent">
+                    LAMBOAPP
+                  </span>
                 </div>
                 <p className="mt-2 max-w-sm text-sm text-white/50">
-                  One-command Kubernetes platform for the sub-agency model.
+                  AI-screened businesses for sale. Ranked by fit. Reasoned. Ready to wire.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-8 text-sm md:grid-cols-3 md:gap-14">
                 <FooterCol
                   title="Product"
                   links={[
-                    ["Docs", "/docs"],
                     ["How it works", "/#how"],
+                    ["Docs", "/docs"],
                   ]}
                 />
                 <FooterCol
@@ -101,6 +211,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <FooterCol
                   title="Legal"
                   links={[
+                    ["Not financial advice", "/docs#disclaimer"],
                     ["Commercial boundary", "https://github.com/jaredzwick/equity-platform/blob/main/COMMERCIAL_BOUNDARY.md"],
                   ]}
                 />
@@ -108,7 +219,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
             <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-white/5 pt-6 text-xs text-white/40 md:flex-row md:items-center">
               <div>© 2026 Pypes LLC · BSL 1.1 · Auto-converts to Apache 2.0 on 2030-08-03</div>
-              <div>Built with Next.js 15 · Deployed on Vercel</div>
             </div>
           </div>
         </footer>
@@ -141,10 +251,10 @@ function FooterCol({ title, links }: { title: string; links: [string, string][] 
 function LogoMark() {
   return (
     <div className="relative h-6 w-6">
-      <div className="absolute inset-0 rounded-md bg-gradient-to-br from-indigo-500 via-fuchsia-500 to-cyan-400" />
+      <div className="absolute inset-0 rounded-md bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500" />
       <div className="absolute inset-[3px] rounded-[5px] bg-black/70 backdrop-blur" />
-      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white">
-        eq
+      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black italic text-white">
+        L
       </div>
     </div>
   );
