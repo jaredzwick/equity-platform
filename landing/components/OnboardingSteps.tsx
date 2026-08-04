@@ -10,9 +10,9 @@ import InstallAppCta from "@/components/InstallAppCta";
 // so the clone/boot commands can render as soon as the fork appears
 // (no page reload).
 export default function OnboardingSteps({
-  upstream: _upstream,
+  upstream,
   initialTargetRepo,
-  login,
+  login: _login,
 }: {
   upstream: string;
   initialTargetRepo: string | null;
@@ -21,12 +21,14 @@ export default function OnboardingSteps({
   const [targetRepo, setTargetRepo] = useState<string | null>(initialTargetRepo);
 
   const forkReady = targetRepo != null;
-  const [, repoName] = (targetRepo ?? `${login}/equity-platform`).split("/");
-
-  const cloneCmd = targetRepo
-    ? `git clone https://github.com/${targetRepo}.git`
-    : "git clone https://github.com/<your-fork>.git";
-  const enterCmd = `cd ${repoName}`;
+  // Clone the UPSTREAM template — not the user's fork. The fork exists only
+  // so the console can commit YAML back via the GitHub API; the code you
+  // run locally is the same either way, and pulling upstream stays trivial
+  // (git pull). Cloning the fork would give you a stale snapshot the moment
+  // upstream ships a fix.
+  const [, upstreamName] = upstream.split("/");
+  const cloneCmd = `git clone https://github.com/${upstream}.git`;
+  const enterCmd = `cd ${upstreamName}`;
   const bootCmd = `./local/up.sh`;
 
   return (
@@ -72,6 +74,12 @@ export default function OnboardingSteps({
             <CopyableCommand cmd={cloneCmd} />
             <CopyableCommand cmd={enterCmd} />
             <CopyableCommand cmd={bootCmd} />
+            <p className="text-xs text-[color:var(--color-muted)]">
+              You&rsquo;re cloning the upstream template — your fork (
+              <code className="text-[color:var(--color-fg)]">{targetRepo}</code>) is where
+              the console commits YAML via the GitHub API, not where you run code from.
+              Pull upstream updates with <code>git pull</code>.
+            </p>
             <p className="text-sm text-[color:var(--color-muted)]">
               When it&rsquo;s up, start the console:{" "}
               <code className="text-[color:var(--color-fg)]">
