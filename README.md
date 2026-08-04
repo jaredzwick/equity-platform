@@ -11,7 +11,7 @@
 [![Next.js](https://img.shields.io/badge/console-Next.js_15-000000)](https://nextjs.org/)
 
 **One-command Kubernetes platform for the sub-agency model.**
-Run multiple businesses on shared infra. Boot locally in 3 min ($0). Provision new apps from the UI — every change is a git commit, every rollback is a `git revert`.
+Rapidly acquire, build, scale, and exit businesses with AI. Boot locally in 3 min ($0). Provision new apps from the UI — every change is a git commit, every rollback is a `git revert`.
 
 [Quick Start](#-quick-start) · [The console](#-the-console) · [Add a business](#-add-a-business) · [GitOps write-back](#-gitops-write-back) · [Reproducibility](#-reproducibility-contract)
 
