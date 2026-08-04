@@ -98,6 +98,14 @@ Routes: `/master` = aggregate, `/<slug>` = per-business drill-in.
 
 ---
 
+## Hosted onramp
+
+The fastest way in: visit the hosted landing site → sign in with GitHub → we fork this repo to your account. Then clone your fork and boot locally. Marketing + auth live on Vercel (`landing/`); the platform itself runs on your machine (there's no cluster on Vercel).
+
+See [`landing/README.md`](./landing/README.md) for the Vercel + GitHub App setup.
+
+---
+
 ## Quick Start
 
 **Requirements:** Docker, Node.js 20+, [Homebrew](https://brew.sh/) on macOS (or your platform's kind/kubectl/helm binaries).
