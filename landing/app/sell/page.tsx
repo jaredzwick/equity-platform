@@ -37,11 +37,18 @@ export const metadata: Metadata = {
   },
 };
 
-const pypesApiURL =
-  process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
-const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+// force-dynamic + reading env inside the render function guarantees the
+// current NEXT_PUBLIC_TURNSTILE_SITE_KEY value is baked into the RSC
+// payload on every request, so a Vercel env change takes effect without
+// needing a rebuild. Without this, Next.js was caching the /sell chunk
+// with the empty site-key value from an earlier build (2026-08-04
+// prod incident: Turnstile widget silently absent from bundle).
+export const dynamic = "force-dynamic";
 
 export default function SellPage() {
+  const pypesApiURL =
+    process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   return (
     <>
       {/* HERO */}
