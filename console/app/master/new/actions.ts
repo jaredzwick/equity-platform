@@ -3,6 +3,7 @@
 import { core } from "@/lib/k8s";
 import { getFile, isConfigured, putFile } from "@/lib/github";
 import { discoverTenants } from "@/lib/tenants";
+import { ensureTenantEmailDb, isEmailDbConfigured } from "@/lib/email-db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -102,6 +103,17 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
       // Commit succeeded but apply failed. Still redirect to master —
       // next `./local/up.sh` will pick it up from the commit.
       redirect(`/master?warn=${encodeURIComponent(`Committed but cluster-apply failed: ${msg}. Re-run ./local/up.sh.`)}`);
+    }
+  }
+
+  // 3) Auto-provision the tenant's email deliverability DB. Best-effort —
+  //    if it fails we still land the tenant; user can retry from the Email
+  //    tab (which also calls ensureTenantEmailDb on load).
+  if (isEmailDbConfigured()) {
+    try {
+      await ensureTenantEmailDb(slug);
+    } catch (e) {
+      console.error(`[email-db] auto-provision failed for ${slug}:`, e);
     }
   }
 
