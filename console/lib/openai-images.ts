@@ -61,12 +61,27 @@ export function buildLogoPrompt(args: {
   if (args.tagline) brandLines.push(`Tagline: ${args.tagline}`);
   if (args.offer) brandLines.push(`What they sell: ${args.offer}`);
   if (args.voice) brandLines.push(`Voice / tone: ${args.voice}`);
-  const colors = [
-    args.primaryColor && `primary ${args.primaryColor}`,
-    args.secondaryColor && `secondary ${args.secondaryColor}`,
-    args.accentColor && `accent ${args.accentColor}`,
-  ].filter(Boolean);
-  if (colors.length > 0) brandLines.push(`Palette: ${colors.join(", ")}`);
+
+  // Drop the palette entirely if every color is a degenerate default
+  // (all-black or all-white). Those are placeholder values and cause
+  // black-on-black / white-on-white logos.
+  const hexes = [args.primaryColor, args.secondaryColor, args.accentColor].filter(
+    (c): c is string => typeof c === "string" && c.length > 0,
+  );
+  const degenerate = hexes.length > 0
+    && hexes.every((h) => /^#0{3,6}$/i.test(h) || /^#f{3,6}$/i.test(h));
+  if (hexes.length > 0 && !degenerate) {
+    const labels = [
+      args.primaryColor && `primary ${args.primaryColor}`,
+      args.secondaryColor && `secondary ${args.secondaryColor}`,
+      args.accentColor && `accent ${args.accentColor}`,
+    ].filter(Boolean);
+    brandLines.push(`Palette (use for the MARK only, NOT the background): ${labels.join(", ")}`);
+  } else {
+    brandLines.push(
+      "Palette: pick colors that fit the offer, voice, and industry. Prefer a distinctive, memorable palette (not all-black, not all-gray).",
+    );
+  }
 
   const priorPrompts = args.history
     .filter((m) => m.role === "user")
@@ -78,14 +93,18 @@ export function buildLogoPrompt(args: {
     "",
     ...brandLines,
     "",
-    "Constraints:",
-    "- Single, iconic mark on a transparent or solid background — no photorealism.",
+    "Hard constraints (do not violate):",
+    "- Render the mark centered on a SOLID WHITE (#ffffff) background. The background must be pure white unless the current directive explicitly asks for a colored or transparent background.",
+    "- Ensure strong visual contrast between the mark and the white background. Do NOT produce an all-black mark against a black background, or a white mark against a white background.",
+    "- Single, iconic mark — no photorealism, no stock-photo textures.",
     "- Legible at 32px favicon size AND at 1024px poster size.",
-    "- Modern, distinctive, professional — avoid clichés and generic AI aesthetics.",
-    "- Prefer flat vector-style shapes; no gradients unless the directive asks.",
-    "- No text unless the directive asks for a wordmark.",
+    "- No text or letterforms unless the directive explicitly asks for a wordmark.",
     "",
-    priorPrompts ? `Previous iteration directives (for continuity):\n${priorPrompts}` : "",
+    "Style guidance:",
+    "- Modern, distinctive, professional — avoid AI clichés (concentric circles, generic swooshes, glowing orbs).",
+    "- Prefer flat vector-style shapes with clean edges; no gradients unless the directive asks.",
+    "",
+    priorPrompts ? `Previous iteration directives (for continuity, treat as accumulated context):\n${priorPrompts}` : "",
     `Current directive: ${args.directive}`,
   ]
     .filter(Boolean)

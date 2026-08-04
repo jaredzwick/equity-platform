@@ -23,6 +23,10 @@ export default function LogoStudio({ tenantSlug, tenantName, currentLogoUrl, dis
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Preview backdrop — default light so black-on-white logos (the model's
+  // default output) are visible. Toggle to dark to sanity-check contrast
+  // for dark-mode use.
+  const [bg, setBg] = useState<"light" | "dark">("light");
   const listRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -128,7 +132,7 @@ export default function LogoStudio({ tenantSlug, tenantName, currentLogoUrl, dis
               <img
                 src={`data:image/png;base64,${it.b64}`}
                 alt=""
-                className="w-12 h-12 rounded object-cover bg-black shrink-0"
+                className="w-12 h-12 rounded object-cover bg-white shrink-0"
               />
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] uppercase tracking-wider text-[color:var(--color-muted)]">
@@ -190,9 +194,39 @@ export default function LogoStudio({ tenantSlug, tenantName, currentLogoUrl, dis
 
       {/* Right: preview column */}
       <div className="flex flex-col border border-[color:var(--color-border)] rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-[color:var(--color-border)] flex items-center justify-between">
-          <div className="text-xs text-[color:var(--color-muted)]">
-            {selected ? `Preview · v${iterations.findIndex((i) => i.id === selected.id) + 1}` : "Preview"}
+        <div className="px-4 py-3 border-b border-[color:var(--color-border)] flex items-center justify-between gap-3">
+          <div className="text-xs text-[color:var(--color-muted)] flex items-center gap-3">
+            <span>
+              {selected ? `Preview · v${iterations.findIndex((i) => i.id === selected.id) + 1}` : "Preview"}
+            </span>
+            <div className="flex items-center gap-0.5 border border-[color:var(--color-border)] rounded p-0.5">
+              <button
+                type="button"
+                onClick={() => setBg("light")}
+                title="Light backdrop"
+                className={
+                  "px-2 py-0.5 rounded text-[10px] transition-colors " +
+                  (bg === "light"
+                    ? "bg-white text-black"
+                    : "hover:bg-white/5")
+                }
+              >
+                ☀︎
+              </button>
+              <button
+                type="button"
+                onClick={() => setBg("dark")}
+                title="Dark backdrop"
+                className={
+                  "px-2 py-0.5 rounded text-[10px] transition-colors " +
+                  (bg === "dark"
+                    ? "bg-neutral-900 text-white"
+                    : "hover:bg-white/5")
+                }
+              >
+                ☾
+              </button>
+            </div>
           </div>
           {selected && (
             <form
@@ -220,7 +254,12 @@ export default function LogoStudio({ tenantSlug, tenantName, currentLogoUrl, dis
             </form>
           )}
         </div>
-        <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-[repeating-conic-gradient(#111_0%_25%,#0a0a0a_0%_50%)] bg-[length:24px_24px]">
+        <div
+          className={
+            "flex-1 overflow-auto p-6 flex items-center justify-center " +
+            (bg === "light" ? "bg-white" : "bg-neutral-950")
+          }
+        >
           {selected ? (
             <img
               src={`data:image/png;base64,${selected.b64}`}
