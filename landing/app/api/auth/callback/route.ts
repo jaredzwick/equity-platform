@@ -50,7 +50,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const fork = await ensureFork(tokenResult.accessToken);
   if (!fork.ok) {
-    return redirectHome(`fork_${fork.error}`);
+    // Log server-side so the actual GitHub message shows up in Vercel logs
+    // — the error code alone (`fork_org_policy`) hides root cause. Surface a
+    // short slice of the message to the user too, but keep it URL-safe.
+    console.error("[auth/callback] fork failed:", {
+      error: fork.error,
+      status: fork.status,
+      message: fork.message,
+      login: user.login,
+    });
+    const msg = fork.message.slice(0, 200);
+    return redirectHome(`fork_${fork.error}`, msg);
   }
 
   const session = await getSession();
@@ -67,8 +77,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   return res;
 }
 
-function redirectHome(errorCode: string): NextResponse {
+function redirectHome(errorCode: string, message?: string): NextResponse {
   const url = new URL(`${siteUrl()}/?error=${encodeURIComponent(errorCode)}`);
+  if (message) url.searchParams.set("msg", message);
   const res = NextResponse.redirect(url);
   res.cookies.delete(stateCookieName);
   return res;
