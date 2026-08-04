@@ -75,6 +75,20 @@ export default async function HomePage({ searchParams }: Props) {
                 How the machine works
               </Link>
             </div>
+
+            {/* Sell-side wedge — quiet secondary CTA under the primary
+                row. Kept small so it doesn't compete with the buyer
+                sign-in but catches business owners arriving from an
+                SEO query for "sell your business". */}
+            <div className="mt-5 text-sm text-white/50">
+              Own a business?{" "}
+              <Link
+                href="/sell"
+                className="border-b border-yellow-400/40 pb-0.5 text-yellow-300 transition hover:text-yellow-200 hover:border-yellow-400"
+              >
+                List it for $7 →
+              </Link>
+            </div>
           </div>
 
           <div className="w-full">
