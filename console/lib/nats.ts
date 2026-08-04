@@ -74,12 +74,43 @@ export type ConsumerRow = {
   numWaiting: number;
 };
 
+export type AlertRow = {
+  stream: string;
+  consumer: string;
+  count: number;
+};
+
+export type NatsAlerts = {
+  redelivered: AlertRow[]; // consumers with numRedelivered > 0
+  pending: AlertRow[]; // consumers with numPending > PENDING_ALERT_THRESHOLD
+};
+
+// Hardcoded per plan D3. Promote to env if it gets noisy.
+const PENDING_ALERT_THRESHOLD = 100;
+
+export function computeAlerts(streams: StreamRow[]): NatsAlerts {
+  const redelivered: AlertRow[] = [];
+  const pending: AlertRow[] = [];
+  for (const s of streams) {
+    for (const c of s.consumers) {
+      if (c.numRedelivered > 0) {
+        redelivered.push({ stream: s.name, consumer: c.name, count: c.numRedelivered });
+      }
+      if (c.numPending > PENDING_ALERT_THRESHOLD) {
+        pending.push({ stream: s.name, consumer: c.name, count: c.numPending });
+      }
+    }
+  }
+  return { redelivered, pending };
+}
+
 export type NatsSnapshot = {
   reachable: boolean;
   error?: string;
   monitorUrl: string;
   overview?: JsOverview;
   streams: StreamRow[];
+  alerts: NatsAlerts;
 };
 
 export async function fetchNats(): Promise<NatsSnapshot> {
@@ -91,7 +122,13 @@ export async function fetchNats(): Promise<NatsSnapshot> {
       signal: AbortSignal.timeout(3_000),
     });
     if (!res.ok) {
-      return { reachable: false, error: `HTTP ${res.status}`, monitorUrl: MONITOR_URL, streams: [] };
+      return {
+        reachable: false,
+        error: `HTTP ${res.status}`,
+        monitorUrl: MONITOR_URL,
+        streams: [],
+        alerts: { redelivered: [], pending: [] },
+      };
     }
     raw = (await res.json()) as JszResponse;
   } catch (e) {
@@ -100,6 +137,7 @@ export async function fetchNats(): Promise<NatsSnapshot> {
       error: e instanceof Error ? e.message : String(e),
       monitorUrl: MONITOR_URL,
       streams: [],
+      alerts: { redelivered: [], pending: [] },
     };
   }
 
@@ -139,6 +177,7 @@ export async function fetchNats(): Promise<NatsSnapshot> {
       storage: raw.storage,
     },
     streams,
+    alerts: computeAlerts(streams),
   };
 }
 
