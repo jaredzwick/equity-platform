@@ -1,4 +1,4 @@
-import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
+import { resolveTenant } from "@/lib/tenants";
 import { notFound } from "next/navigation";
 import {
   ensureTenantEmailDb,
@@ -18,18 +18,6 @@ export default async function EmailPage({ params }: Props) {
   const { tenant: slug } = await params;
   const tenant = await resolveTenant(slug);
   if (!tenant) notFound();
-
-  // Master aggregate not implemented yet — punt for now.
-  if (slug === MASTER_SLUG) {
-    return (
-      <div className="max-w-6xl">
-        <NotConfigured
-          heading="Master email view — not implemented"
-          body="This will roll up counts across every tenant. Wire it after you have >1 tenant sending mail."
-        />
-      </div>
-    );
-  }
 
   if (!isEmailDbConfigured()) {
     return (
