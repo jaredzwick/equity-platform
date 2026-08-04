@@ -55,6 +55,7 @@ export default function ProfileEditor({ tenantSlug, initialProfile, hasExisting,
                 key={field.path}
                 field={field}
                 defaultValue={readAtPath(initialProfile, field.path)}
+                tenantSlug={tenantSlug}
               />
             ))}
           </div>
@@ -86,7 +87,7 @@ export default function ProfileEditor({ tenantSlug, initialProfile, hasExisting,
   );
 }
 
-function FieldInput({ field, defaultValue }: { field: Field; defaultValue: string }) {
+function FieldInput({ field, defaultValue, tenantSlug }: { field: Field; defaultValue: string; tenantSlug: string }) {
   const commonProps = {
     name: field.path,
     id: `field-${field.path}`,
@@ -141,9 +142,19 @@ function FieldInput({ field, defaultValue }: { field: Field; defaultValue: strin
 
   return (
     <label className={`flex flex-col gap-1 ${isWide ? "col-span-2" : ""}`}>
-      <span className="text-sm font-medium text-[color:var(--color-fg)]">
-        {field.label}
-        {field.required && <span className="text-red-400 ml-1">*</span>}
+      <span className="text-sm font-medium text-[color:var(--color-fg)] flex items-center justify-between gap-2">
+        <span>
+          {field.label}
+          {field.required && <span className="text-red-400 ml-1">*</span>}
+        </span>
+        {field.path === "brand.logo_url" && (
+          <Link
+            href={`/${tenantSlug}/logo`}
+            className="text-xs text-emerald-400 hover:underline font-normal"
+          >
+            Generate with AI ✨
+          </Link>
+        )}
       </span>
       {control}
       {field.hint && <span className="text-[11px] text-[color:var(--color-muted)]">{field.hint}</span>}

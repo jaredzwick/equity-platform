@@ -1,12 +1,18 @@
 "use server";
 
 import { core } from "@/lib/k8s";
-import { authToken, getFileSha, isConfigured, putFile } from "@/lib/github";
+import { getFile, isConfigured, putFile } from "@/lib/github";
 import { discoverTenants } from "@/lib/tenants";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 const BOOTSTRAP_PATH = "bootstrap/00-namespaces.yaml";
+
+function isRedirect(e: unknown): boolean {
+  return typeof e === "object" && e !== null && "digest" in e
+    && typeof (e as { digest: unknown }).digest === "string"
+    && (e as { digest: string }).digest.startsWith("NEXT_REDIRECT");
+}
 
 function validSlug(s: string): boolean {
   return /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/.test(s);
@@ -55,32 +61,22 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
   // 1) Append to bootstrap/00-namespaces.yaml via GitHub Contents API.
   //    This is the CANONICAL source. Git commit = versioned + revertable.
   try {
-    const sha = await getFileSha(BOOTSTRAP_PATH);
-    if (!sha) {
+    const bootstrap = await getFile(BOOTSTRAP_PATH);
+    if (!bootstrap) {
       redirect(`${backTo}?error=${encodeURIComponent(`Could not find ${BOOTSTRAP_PATH} in the repo.`)}`);
     }
-    // Fetch current contents so we can append.
-    const owner = process.env.GITHUB_REPO!.split("/")[0];
-    const repo = process.env.GITHUB_REPO!.split("/")[1];
-    const branch = process.env.GITHUB_BRANCH ?? "main";
-    const token = await authToken();
-    const raw = await fetch(
-      `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${BOOTSTRAP_PATH}`,
-      { cache: "no-store", headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!raw.ok) {
-      redirect(`${backTo}?error=${encodeURIComponent(`Could not read ${BOOTSTRAP_PATH}: HTTP ${raw.status}`)}`);
-    }
-    const current = await raw.text();
-    const appended = current + (current.endsWith("\n") ? "" : "\n") + renderNamespace(slug, name, namespace);
+    const appended = bootstrap.content
+      + (bootstrap.content.endsWith("\n") ? "" : "\n")
+      + renderNamespace(slug, name, namespace);
 
     await putFile({
       path: BOOTSTRAP_PATH,
       content: appended,
       message: `feat(agency): add ${name} (${slug}) business`,
-      sha: sha!,
+      sha: bootstrap.sha,
     });
   } catch (e) {
+    if (isRedirect(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     redirect(`${backTo}?error=${encodeURIComponent(`GitHub write failed: ${msg}`)}`);
   }
@@ -100,6 +96,7 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
       },
     });
   } catch (e) {
+    if (isRedirect(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     if (!msg.includes("already exists")) {
       // Commit succeeded but apply failed. Still redirect to master —

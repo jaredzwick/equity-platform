@@ -6,6 +6,12 @@ import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+function isRedirect(e: unknown): boolean {
+  return typeof e === "object" && e !== null && "digest" in e
+    && typeof (e as { digest: unknown }).digest === "string"
+    && (e as { digest: string }).digest.startsWith("NEXT_REDIRECT");
+}
+
 // A very rough cron-expression check. Full parsing is non-trivial (@daily,
 // L, W, ?, etc.) — we let kubectl reject anything genuinely broken and just
 // catch obvious garbage here.
@@ -99,6 +105,7 @@ export async function provisionCronFromForm(formData: FormData): Promise<void> {
       redirect(back + `?error=${encodeURIComponent(`A cron named "${name}" already exists at ${path}.`)}`);
     }
   } catch (e) {
+    if (isRedirect(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     redirect(back + `?error=${encodeURIComponent(`GitHub read failed: ${msg}`)}`);
   }
@@ -111,6 +118,7 @@ export async function provisionCronFromForm(formData: FormData): Promise<void> {
       message: `feat(${tenant}): add cron ${name} via console`,
     });
   } catch (e) {
+    if (isRedirect(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     redirect(back + `?error=${encodeURIComponent(`GitHub write failed: ${msg}`)}`);
   }
@@ -155,6 +163,7 @@ export async function provisionCronFromForm(formData: FormData): Promise<void> {
       },
     });
   } catch (e) {
+    if (isRedirect(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     // Commit landed but cluster-apply failed — surface but don't rollback the
     // git commit. On the next ArgoCD-crons reconcile (once wired) it'd sync.

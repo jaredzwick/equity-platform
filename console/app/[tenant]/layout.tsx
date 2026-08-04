@@ -15,6 +15,7 @@ export default async function TenantLayout({ children, params }: Props) {
   const tabs = [
     { href: `/${slug}`, label: "Overview" },
     { href: `/${slug}/profile`, label: "Profile" },
+    { href: `/${slug}/logo`, label: "Logo" },
     { href: `/${slug}/apps`, label: "Apps" },
     { href: `/${slug}/cron`, label: "Cron" },
     { href: `/${slug}/email`, label: "Email" },

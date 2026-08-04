@@ -125,12 +125,16 @@ async function gh<T>(path: string, init?: RequestInit): Promise<T> {
 // omit for new files.
 export async function putFile(args: {
   path: string;
-  content: string;
+  // Text (utf-8) OR binary (Buffer/Uint8Array — e.g. PNG bytes for logo commits).
+  content: string | Buffer | Uint8Array;
   message: string;
   sha?: string;
 }): Promise<{ commitSha: string; contentSha: string }> {
   const { owner, name, branch } = await resolveTargetRepo();
-  const b64 = Buffer.from(args.content).toString("base64");
+  const buf = typeof args.content === "string"
+    ? Buffer.from(args.content, "utf8")
+    : Buffer.from(args.content);
+  const b64 = buf.toString("base64");
   const body = JSON.stringify({
     message: args.message,
     content: b64,
@@ -146,12 +150,24 @@ export async function putFile(args: {
 
 // Get a file's current sha (needed for update) — returns null if not found.
 export async function getFileSha(path: string): Promise<string | null> {
+  const f = await getFile(path);
+  return f?.sha ?? null;
+}
+
+// Fetch a file's sha + decoded content in one call. Uses the Contents API on
+// the session-resolved repo so it works for private repos + user forks (unlike
+// raw.githubusercontent.com, which doesn't accept fine-grained PATs / OAuth
+// tokens reliably).
+export async function getFile(path: string): Promise<{ sha: string; content: string } | null> {
   const { owner, name, branch } = await resolveTargetRepo();
   try {
-    const res = await gh<{ sha: string }>(
+    const res = await gh<{ sha: string; content: string; encoding: string }>(
       `/repos/${owner}/${name}/contents/${encodeURI(path)}?ref=${branch}`,
     );
-    return res.sha;
+    const content = res.encoding === "base64"
+      ? Buffer.from(res.content, "base64").toString("utf8")
+      : res.content;
+    return { sha: res.sha, content };
   } catch (e) {
     if (e instanceof Error && e.message.includes("404")) return null;
     throw e;
@@ -194,6 +210,13 @@ export async function revertUrl(sha: string): Promise<string> {
 export async function repoUrl(): Promise<string> {
   const { owner, name } = await resolveTargetRepo();
   return `https://github.com/${owner}/${name}`;
+}
+
+// Raw file URL on the session-resolved fork. Works for public forks without
+// auth (private forks would need a token — use getFile there instead).
+export async function rawUrl(path: string): Promise<string> {
+  const { owner, name, branch } = await resolveTargetRepo();
+  return `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${path}`;
 }
 
 // True if either an OAuth session exists OR env fallback is fully set.

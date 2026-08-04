@@ -16,6 +16,14 @@ const config: NextConfig = {
   // The console runs server-side k8s API calls; @kubernetes/client-node
   // is server-only.
   serverExternalPackages: ["@kubernetes/client-node"],
+  // Logo studio POSTs base64 PNGs to a Server Action — gpt-image-1 outputs
+  // can be 2–4 MB. Bump above the 1 MB default. Cap at 10 MB to keep abuse
+  // within reason.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
 };
 
 export default config;

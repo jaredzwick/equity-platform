@@ -4,7 +4,7 @@
 
 import "server-only";
 import { load as yamlLoad, dump as yamlDump } from "js-yaml";
-import { authToken, getFileSha, putFile, isConfigured } from "@/lib/github";
+import { getFile, getFileSha, putFile, isConfigured } from "@/lib/github";
 import { profilePath, type BusinessProfile } from "@/lib/business-profile-schema";
 
 // Re-export the client-safe surface so existing server-side call sites can
@@ -40,24 +40,12 @@ export function parseProfile(text: string): BusinessProfile {
 
 export async function loadProfile(slug: string): Promise<BusinessProfile | null> {
   if (!isConfigured()) return null;
-  const owner = process.env.GITHUB_REPO!.split("/")[0];
-  const repo = process.env.GITHUB_REPO!.split("/")[1];
-  const branch = process.env.GITHUB_BRANCH ?? "main";
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${profilePath(slug)}`;
-  let token: string;
   try {
-    token = await authToken();
+    const file = await getFile(profilePath(slug));
+    return file ? parseProfile(file.content) : null;
   } catch {
     return null;
   }
-  const res = await fetch(url, {
-    cache: "no-store",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`GitHub raw ${url} → ${res.status}`);
-  const text = await res.text();
-  return parseProfile(text);
 }
 
 export async function saveProfile(slug: string, profile: BusinessProfile): Promise<{ commitSha: string }> {
