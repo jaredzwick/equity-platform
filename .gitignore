@@ -14,6 +14,7 @@ local/.console.pid
 .idea/
 *.swp
 *.swo
+.mcp.json
 
 # Secrets (belt-and-suspenders — nothing sensitive should live here anyway)
 *.pem
