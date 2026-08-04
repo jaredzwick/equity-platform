@@ -390,7 +390,7 @@ export default function SellListingForm({
       {turnstileSiteKey && (
         <Script
           src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
       )}
 
@@ -793,39 +793,55 @@ function Button({
 
 function StepIndicator({ step }: { step: Step }) {
   const labels = ["Business", "Contact", "DD files", "Pay"];
+  const pctFilled = ((step - 1) / (labels.length - 1)) * 100;
   return (
-    <ol className="flex items-center gap-2 text-xs">
-      {labels.map((label, idx) => {
-        const n = (idx + 1) as Step;
-        const active = n === step;
-        const done = n < step;
-        return (
-          <li
-            key={label}
-            className={
-              "flex items-center gap-2 rounded-full px-3 py-1.5 " +
-              (active
-                ? "bg-yellow-400/[0.15] text-yellow-200"
-                : done
-                  ? "text-white/80"
-                  : "text-white/40")
-            }
-          >
-            <span
-              className={
-                "flex h-5 w-5 items-center justify-center rounded-full text-[10px] " +
-                (active || done
-                  ? "bg-yellow-400 text-black"
-                  : "border border-white/20 text-white/50")
-              }
-            >
-              {done ? "✓" : n}
-            </span>
-            {label}
-          </li>
-        );
-      })}
-    </ol>
+    <div>
+      {/* Progress bar — fills as steps complete. Positioned behind the
+          step circles so they punch through it. Mobile-friendly since it
+          scales down to whatever width the wizard has. */}
+      <div className="relative">
+        <div className="absolute top-3 left-3 right-3 h-0.5 rounded bg-white/10" />
+        <div
+          className="absolute top-3 left-3 h-0.5 rounded bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 transition-all duration-500"
+          style={{ width: `calc((100% - 1.5rem) * ${pctFilled / 100})` }}
+        />
+        <ol className="relative flex items-start justify-between gap-1">
+          {labels.map((label, idx) => {
+            const n = (idx + 1) as Step;
+            const active = n === step;
+            const done = n < step;
+            return (
+              <li key={label} className="flex flex-1 flex-col items-center">
+                <span
+                  className={
+                    "z-10 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold transition " +
+                    (done
+                      ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-black shadow-lg shadow-orange-500/40"
+                      : active
+                        ? "bg-white text-black ring-4 ring-yellow-400/40"
+                        : "bg-white/[0.06] text-white/40 ring-1 ring-white/10")
+                  }
+                >
+                  {done ? "✓" : n}
+                </span>
+                <span
+                  className={
+                    "mt-2 text-[10px] font-medium uppercase tracking-wider transition sm:text-xs " +
+                    (active
+                      ? "text-yellow-200"
+                      : done
+                        ? "text-white/70"
+                        : "text-white/40")
+                  }
+                >
+                  {label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </div>
   );
 }
 
