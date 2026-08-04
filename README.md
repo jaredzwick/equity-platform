@@ -137,6 +137,19 @@ Idempotent. Destroys the kind cluster. Filesystem stays clean.
 
 ## The console
 
+<table>
+  <tr>
+    <td><a href="docs/screenshots/01-master-businesses.png"><img src="docs/screenshots/01-master-businesses.png" alt="Businesses" width="100%"/></a><br/><sub><b>Businesses</b> — sidebar auto-populates from k8s namespace labels</sub></td>
+    <td><a href="docs/screenshots/02-master-aggregate.png"><img src="docs/screenshots/02-master-aggregate.png" alt="Aggregate observability" width="100%"/></a><br/><sub><b>Aggregate observability</b> — apps + crons + NATS streams across every tenant</sub></td>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/03-master-email.png"><img src="docs/screenshots/03-master-email.png" alt="Email deliverability" width="100%"/></a><br/><sub><b>Email deliverability</b> — sent / delivered / opened / bounced rolled up across tenants</sub></td>
+    <td><a href="docs/screenshots/05-master-new-business.png"><img src="docs/screenshots/05-master-new-business.png" alt="New Business form" width="100%"/></a><br/><sub><b>New Business</b> — commits a namespace block to <code>bootstrap/00-namespaces.yaml</code> and applies it live</sub></td>
+  </tr>
+</table>
+
+<sub>Agency settings screenshot: <a href="docs/screenshots/04-master-settings.png">docs/screenshots/04-master-settings.png</a> (full-height form).</sub>
+
 The console is the whole UX. Sidebar lists every business (auto-discovered from namespace labels). Each business has 6 tabs:
 
 | Tab | What it shows | Data source |
