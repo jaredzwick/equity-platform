@@ -14,31 +14,10 @@ type ErrorEntry = {
 };
 
 const ERROR_MAP: Record<string, ErrorEntry> = {
-  fork_org_policy: {
-    title: "GitHub blocked the fork",
-    detail:
-      "Your account (or org) can't fork this repository. Usually one of: the GitHub App isn't installed on your account yet, your org restricts forks to members only, or you're signed in with an account that doesn't have permission.",
-    actions: [
-      { label: "Install the App + try again", href: "/api/auth/login", primary: true },
-      { label: "Check org fork policy", href: "https://docs.github.com/en/organizations/managing-organization-settings/managing-the-forking-policy-for-your-organization" },
-    ],
-  },
-  fork_not_found: {
-    title: "Upstream repository not found",
-    detail:
-      "We couldn't find the template repository to fork from. This is on our side — the platform is misconfigured. Contact support.",
-    actions: [{ label: "Try again", href: "/api/auth/login" }],
-  },
-  fork_rate_limited: {
-    title: "GitHub is rate-limiting you",
-    detail: "Wait a minute and try again — GitHub throttles frequent API calls.",
-    actions: [{ label: "Try again", href: "/api/auth/login", primary: true }],
-  },
-  fork_unknown: {
-    title: "Fork failed",
-    detail:
-      "GitHub returned an unexpected response when we tried to fork. The details below have the specifics.",
-    actions: [{ label: "Try again", href: "/api/auth/login", primary: true }],
+  not_authenticated: {
+    title: "Please sign in first",
+    detail: "You need to sign in with GitHub before continuing to the onboarding steps.",
+    actions: [{ label: "Sign in with GitHub", href: "/api/auth/login", primary: true }],
   },
   csrf: {
     title: "Session expired",

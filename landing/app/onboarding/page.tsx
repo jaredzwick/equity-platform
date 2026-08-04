@@ -1,22 +1,24 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import CopyableCommand from "@/components/CopyableCommand";
-import ForkStatusChip from "@/components/ForkStatusChip";
-import InstallAppCta from "@/components/InstallAppCta";
+import OnboardingSteps from "@/components/OnboardingSteps";
 import { getSession } from "@/lib/session";
+import { upstreamRepo } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingPage() {
   const session = await getSession();
-  if (!session.login || !session.targetRepo) {
+  // Only redirect when NOT signed in. Missing targetRepo is fine — the fork
+  // step handles that case with a manual CTA.
+  if (!session.login) {
     redirect("/?error=not_authenticated");
   }
 
-  const [owner, name] = session.targetRepo.split("/");
-  const cloneCmd = `git clone https://github.com/${owner}/${name}.git`;
-  const enterCmd = `cd ${name}`;
-  const bootCmd = `./local/up.sh`;
+  const upstream = upstreamRepo();
+  // If the session already knows the fork, hand it to the client so the
+  // clone/boot commands can render on first paint (no flicker while the
+  // client polls fork-ready to re-confirm).
+  const initialTargetRepo = session.targetRepo ?? null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
@@ -37,46 +39,15 @@ export default async function OnboardingPage() {
       </div>
 
       <p className="mt-4 text-[color:var(--color-muted)]">
-        We&rsquo;ve forked the platform to your GitHub account. Here&rsquo;s how to boot it locally.
+        Three quick steps to a running platform on your machine. We never touch your cluster —
+        you run everything locally.
       </p>
 
-      <section className="mt-8">
-        <ForkStatusChip />
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-medium">1. Install the App on your fork</h2>
-        <p className="mt-1 text-sm text-[color:var(--color-muted)]">
-          Gives the local console permission to commit YAML back to your fork.
-        </p>
-        <div className="mt-4">
-          <InstallAppCta />
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-medium">2. Clone your fork</h2>
-        <div className="mt-3 space-y-2">
-          <CopyableCommand cmd={cloneCmd} />
-          <CopyableCommand cmd={enterCmd} />
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-medium">3. Boot the platform</h2>
-        <p className="mt-1 text-sm text-[color:var(--color-muted)]">
-          Requires <code>docker</code>, <code>kind</code>, <code>kubectl</code>, and{" "}
-          <code>helm</code>. Takes ~3 minutes.
-        </p>
-        <div className="mt-3">
-          <CopyableCommand cmd={bootCmd} />
-        </div>
-        <p className="mt-3 text-sm text-[color:var(--color-muted)]">
-          When it&rsquo;s up, start the console:{" "}
-          <code className="text-[color:var(--color-fg)]">cd console &amp;&amp; npm install &amp;&amp; npm run dev</code>
-          , then open <a href="http://localhost:3030" className="underline">http://localhost:3030</a>.
-        </p>
-      </section>
+      <OnboardingSteps
+        upstream={`${upstream.owner}/${upstream.name}`}
+        initialTargetRepo={initialTargetRepo}
+        login={session.login}
+      />
 
       <section className="mt-12 border-t border-[color:var(--color-border)] pt-6 text-sm text-[color:var(--color-muted)]">
         Stuck? See the{" "}
@@ -85,12 +56,12 @@ export default async function OnboardingPage() {
         </Link>{" "}
         or file an issue at{" "}
         <a
-          href={`https://github.com/${owner}/${name}/issues`}
+          href={`https://github.com/${upstream.owner}/${upstream.name}/issues`}
           className="underline hover:text-[color:var(--color-fg)]"
           target="_blank"
           rel="noreferrer"
         >
-          github.com/{owner}/{name}/issues
+          github.com/{upstream.owner}/{upstream.name}/issues
         </a>
         .
       </section>
