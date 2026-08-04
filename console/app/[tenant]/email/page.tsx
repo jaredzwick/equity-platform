@@ -88,12 +88,11 @@ export default async function EmailPage({ params }: Props) {
         <div className="p-6 border border-[color:var(--color-border)] rounded-lg bg-white/[0.02] text-sm">
           <div className="font-semibold mb-1">No events yet</div>
           <div className="text-[color:var(--color-muted)] mb-3">
-            Point your Resend webhook at{" "}
-            <code className="text-[color:var(--color-fg)]">
-              https://&lt;your-host&gt;/api/webhooks/resend/{slug}
-            </code>{" "}
-            and set <code>RESEND_WEBHOOK_SECRET</code> in <code>console/.env.local</code> to the
-            Resend endpoint secret.
+            The platform uses ONE Resend webhook for every business —{" "}
+            <code className="text-[color:var(--color-fg)]">https://&lt;host&gt;/api/webhooks/resend</code>.
+            Events route to this business because outbound emails carry a{" "}
+            <code>tenant</code> tag. Use <code>lib/resend-send.ts</code> —
+            it adds the tag for you.
           </div>
           <div className="text-xs text-[color:var(--color-muted)]">
             Events land in <code className="text-[color:var(--color-fg)]">{dbName}.email_events</code>{" "}

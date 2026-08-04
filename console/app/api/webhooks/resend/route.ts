@@ -1,16 +1,20 @@
-// POST /api/webhooks/resend/[tenant]
+// POST /api/webhooks/resend  — ONE shared Resend webhook endpoint.
 //
-// Ingests Resend delivery events (sent, delivered, opened, clicked, bounced,
-// complained) into the tenant's email_events table. Resend uses Svix for
-// webhook signing — we verify the svix-id + svix-timestamp + svix-signature
-// headers against RESEND_WEBHOOK_SECRET before trusting the payload.
+// Ideology: no per-tenant Resend UI setup. Tenant routing comes from the
+// email's own tags, which Resend echoes into the webhook payload. Every
+// outbound email in this platform MUST carry:
 //
-// One secret for all tenants; tenant identity comes from the URL path.
+//   tags: [{ name: "tenant", value: "<slug>" }]
+//
+// See lib/resend-send.ts for the send-side helper that auto-adds it.
+//
+// Signing: single RESEND_WEBHOOK_SECRET covers every tenant. Set once in
+// console/.env.local (or the platform's ExternalSecret in-cluster).
 
 import { NextRequest } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { insertEmailEvent, isEmailDbConfigured } from "@/lib/email-db";
-import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
+import { resolveTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,24 +32,13 @@ type ResendPayload = {
   };
 };
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> },
-) {
-  const { tenant } = await params;
-  if (tenant === MASTER_SLUG) {
-    return Response.json({ error: "master cannot receive webhooks" }, { status: 400 });
-  }
-  const t = await resolveTenant(tenant);
-  if (!t) return Response.json({ error: `Unknown tenant: ${tenant}` }, { status: 404 });
+export async function POST(req: NextRequest) {
   if (!isEmailDbConfigured()) {
     return Response.json({ error: "Email DB not configured" }, { status: 503 });
   }
 
   const raw = await req.text();
 
-  // Verify Svix signature. Skipping verification is only allowed if
-  // RESEND_WEBHOOK_SECRET is unset AND we're in dev — otherwise refuse.
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (secret) {
     const svixId = req.headers.get("svix-id");
@@ -68,13 +61,27 @@ export async function POST(
     return Response.json({ error: "invalid JSON" }, { status: 400 });
   }
 
+  // Route by the "tenant" tag on the email. Emails sent WITHOUT this tag
+  // can't be attributed and are dropped with a 422 — surfaces bugs in the
+  // send-side helper instead of silently swallowing events.
+  const tenantTag = payload.data?.tags?.find((t) => t.name === "tenant");
+  const slug = tenantTag?.value;
+  if (!slug) {
+    return Response.json(
+      { error: 'missing tenant tag — send emails with tags: [{name:"tenant", value:"<slug>"}]' },
+      { status: 422 },
+    );
+  }
+  const t = await resolveTenant(slug);
+  if (!t) return Response.json({ error: `unknown tenant tag: ${slug}` }, { status: 404 });
+
   const to = Array.isArray(payload.data?.to) ? payload.data.to[0] : payload.data?.to;
   const templateTag = payload.data?.tags?.find(
     (tg) => tg.name === "template_id" || tg.name === "template",
   );
 
   try {
-    await insertEmailEvent(tenant, {
+    await insertEmailEvent(slug, {
       event_type: payload.type,
       email_id: payload.data?.email_id ?? "unknown",
       to_addr: to ?? "unknown",
@@ -92,8 +99,7 @@ export async function POST(
 }
 
 // Svix signature format: `v1,<base64-hmac>` (space-separated for multiple).
-// See https://docs.svix.com/receiving/verifying-payloads/how-manual for the
-// canonical algorithm.
+// See https://docs.svix.com/receiving/verifying-payloads/how-manual
 function verifySvix(
   secret: string,
   svixId: string,
@@ -101,7 +107,6 @@ function verifySvix(
   svixSig: string,
   body: string,
 ): boolean {
-  // Secret is usually "whsec_<base64>". Strip the prefix if present.
   const key = secret.startsWith("whsec_")
     ? Buffer.from(secret.slice(6), "base64")
     : Buffer.from(secret);
