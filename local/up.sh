@@ -22,6 +22,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLUSTER_NAME="equity-local"
 
+# Enable versioned git hooks (idempotent). .githooks/pre-push mirrors
+# Vercel's console build so broken pushes fail locally before CI.
+if [ -d "$REPO_DIR/.githooks" ]; then
+  current=$(git -C "$REPO_DIR" config --get core.hooksPath 2>/dev/null || echo "")
+  if [ "$current" != ".githooks" ]; then
+    git -C "$REPO_DIR" config core.hooksPath .githooks
+    echo "Enabled .githooks (pre-push console build gate)"
+  fi
+fi
+
 # Parse args
 REPO_URL_FLAG=""
 while [ $# -gt 0 ]; do
@@ -42,6 +52,8 @@ need kind kind
 need kubectl kubernetes-cli
 need helm helm
 need envsubst gettext
+need node node
+need npm node
 
 echo "==> Ensuring kind cluster '$CLUSTER_NAME' exists"
 if ! kind get clusters 2>/dev/null | grep -qx "$CLUSTER_NAME"; then
@@ -60,7 +72,10 @@ kubectl apply -n argocd -f "$REPO_DIR/bootstrap/01-argocd-install.yaml"
 ARGOCD_VERSION=$(kubectl -n argocd get configmap argocd-version-pin -o jsonpath='{.data.version}')
 ARGOCD_URL=$(kubectl -n argocd get configmap argocd-version-pin -o jsonpath='{.data.upstream}')
 echo "    ArgoCD version: $ARGOCD_VERSION"
-kubectl apply -n argocd -f "$ARGOCD_URL"
+# --server-side / --force-conflicts is required because ArgoCD's CRDs
+# (notably applicationsets.argoproj.io) exceed the 262KB last-applied-
+# configuration annotation limit that client-side apply relies on.
+kubectl apply -n argocd --server-side --force-conflicts -f "$ARGOCD_URL"
 
 echo "==> Waiting for ArgoCD server to be ready (may take 2-3 min)"
 kubectl wait --for=condition=available --timeout=300s -n argocd deployment/argocd-server
@@ -96,8 +111,36 @@ else
   envsubst '${GIT_REPO_URL}' < "$REPO_DIR/bootstrap/03-root-app.yaml" | kubectl apply -f -
 fi
 
+# Start the console UI (Next.js dev server on :3030) in the background so
+# the whole local stack is one command. Idempotent via PID file — re-runs
+# reuse an already-running server. Logs stream to $CONSOLE_LOG_FILE.
+# `down.sh` is responsible for stopping the process on teardown.
+CONSOLE_DIR="$REPO_DIR/console"
+CONSOLE_PID_FILE="$SCRIPT_DIR/.console.pid"
+CONSOLE_LOG_FILE="$SCRIPT_DIR/.console.log"
+
+echo "==> Ensuring console dependencies are installed"
+if [ ! -d "$CONSOLE_DIR/node_modules" ]; then
+  (cd "$CONSOLE_DIR" && npm install)
+else
+  echo "    node_modules present, skipping npm install"
+fi
+
+echo "==> Starting console UI (Next.js on :3030)"
+if [ -f "$CONSOLE_PID_FILE" ] && kill -0 "$(cat "$CONSOLE_PID_FILE")" 2>/dev/null; then
+  echo "    already running (PID $(cat "$CONSOLE_PID_FILE"))"
+else
+  (cd "$CONSOLE_DIR" && nohup npm run dev >"$CONSOLE_LOG_FILE" 2>&1 &
+    echo $! >"$CONSOLE_PID_FILE")
+  echo "    started (PID $(cat "$CONSOLE_PID_FILE")), logs: $CONSOLE_LOG_FILE"
+fi
+
 echo ""
 echo "✓ Platform is up."
+echo ""
+echo "Console UI:"
+echo "  open http://localhost:3030"
+echo "  tail -f $CONSOLE_LOG_FILE"
 echo ""
 echo "ArgoCD UI:"
 echo "  kubectl port-forward -n argocd svc/argocd-server 8080:80"

@@ -50,18 +50,54 @@ function passesNs(ns: string | undefined, nsFilter?: string[]): boolean {
 }
 
 export async function listArgoApps(nsFilter?: string[]): Promise<ArgoApp[]> {
-  const res = await custom().listNamespacedCustomObject(
-    "argoproj.io",
-    "v1alpha1",
-    "argocd",
-    "applications",
-  );
-  const body = res.body as { items?: ArgoApp[] };
+  const res = await custom().listNamespacedCustomObject({
+    group: "argoproj.io",
+    version: "v1alpha1",
+    namespace: "argocd",
+    plural: "applications",
+  });
+  const body = res as { items?: ArgoApp[] };
   const items = body.items ?? [];
   // ArgoCD Apps live in the argocd namespace, but each has a
   // spec.destination.namespace pointing at where it deploys. Filter on THAT.
   if (!nsFilter) return items;
   return items.filter((a) => passesNs(a.spec.destination.namespace, nsFilter));
+}
+
+export type ArgoRootSource = {
+  repoURL: string;
+  targetRevision: string;
+  path: string;
+  syncStatus: string | null;
+  healthStatus: string | null;
+};
+
+// Read the ArgoCD root Application (spec.source) — this is what the cluster
+// is *actually* reconciling from. Used by the GitHub settings page to detect
+// mismatches between the console's write target (user's fork) and ArgoCD's
+// read target (whatever up.sh baked in).
+export async function getArgoRootSource(): Promise<ArgoRootSource | null> {
+  try {
+    const res = await custom().getNamespacedCustomObject({
+      group: "argoproj.io",
+      version: "v1alpha1",
+      namespace: "argocd",
+      plural: "applications",
+      name: "root",
+    });
+    const app = res as ArgoApp;
+    const src = app.spec.source ?? app.spec.sources?.[0];
+    if (!src?.repoURL) return null;
+    return {
+      repoURL: src.repoURL,
+      targetRevision: src.targetRevision ?? "HEAD",
+      path: (src as { path?: string }).path ?? "apps",
+      syncStatus: app.status?.sync?.status ?? null,
+      healthStatus: app.status?.health?.status ?? null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export type CronJobRow = {
@@ -76,7 +112,7 @@ export type CronJobRow = {
 
 export async function listCronJobs(nsFilter?: string[]): Promise<CronJobRow[]> {
   const res = await batch().listCronJobForAllNamespaces();
-  const items: V1CronJob[] = res.body.items ?? [];
+  const items: V1CronJob[] = res.items ?? [];
   return items
     .filter((cj) => passesNs(cj.metadata?.namespace, nsFilter))
     .map((cj) => ({

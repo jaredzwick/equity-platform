@@ -31,6 +31,47 @@ jobs:
           # No --strict: warnings do not fail the build; errors do.
           yamllint .
 
+  console-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: console/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  landing-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    env:
+      # Build-time placeholders — required env vars throw at build if unset.
+      # These are non-secret dummies just to let `next build` complete.
+      GITHUB_APP_CLIENT_ID: ci-placeholder
+      GITHUB_APP_CLIENT_SECRET: ci-placeholder
+      SESSION_PASSWORD: ci-placeholder-session-password-32-chars
+      UPSTREAM_REPO: jaredzwick/equity-platform
+      NEXT_PUBLIC_SITE_URL: http://localhost:3040
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: landing/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+
   kubeval-manifests:
     runs-on: ubuntu-latest
     steps:

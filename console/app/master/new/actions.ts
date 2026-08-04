@@ -88,11 +88,13 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
   //    exists we swallow the 409.
   try {
     await core().createNamespace({
-      metadata: {
-        name: namespace,
-        labels: {
-          "equity.io/tenant": slug,
-          "equity.io/tenant-name": name,
+      body: {
+        metadata: {
+          name: namespace,
+          labels: {
+            "equity.io/tenant": slug,
+            "equity.io/tenant-name": name,
+          },
         },
       },
     });

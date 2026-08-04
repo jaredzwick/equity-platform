@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Pre-push gate: mirror Vercel's build for the JS apps (console + landing)
+# so type errors and broken builds never leave your machine. Only builds
+# an app when its files are in the pushed range.
+#
+# Enable per-clone:
+#   git config core.hooksPath .githooks
+# (local/up.sh does this automatically.)
+#
+# Bypass (use sparingly):
+#   git push --no-verify
+
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+zero="0000000000000000000000000000000000000000"
+build_console=0
+build_landing=0
+
+# stdin from git: <local_ref> <local_sha> <remote_ref> <remote_sha>
+while IFS=' ' read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+  [ "$local_sha" = "$zero" ] && continue  # deleting a branch
+
+  if [ "${remote_sha:-$zero}" = "$zero" ]; then
+    base=$(git merge-base "$local_sha" origin/main 2>/dev/null || echo "")
+    range="${base:+$base..}$local_sha"
+  else
+    range="${remote_sha}..${local_sha}"
+  fi
+
+  changed=$(git diff --name-only "$range" 2>/dev/null || true)
+  echo "$changed" | grep -qE '^console/' && build_console=1
+  echo "$changed" | grep -qE '^landing/' && build_landing=1
+done
+
+build_app() {
+  app=$1
+  echo "pre-push: $app/ changed — running 'npm run build' (mirrors Vercel)"
+  (
+    cd "$app"
+    if [ ! -d node_modules ] || [ package-lock.json -nt node_modules ]; then
+      echo "pre-push: installing $app deps"
+      npm ci
+    fi
+    npm run build
+  )
+}
+
+[ "$build_console" -eq 1 ] && build_app console
+if [ "$build_landing" -eq 1 ]; then
+  # Landing requires env vars at build time (throws on missing) — inject
+  # placeholders so the build succeeds even without .env.local.
+  GITHUB_APP_CLIENT_ID="${GITHUB_APP_CLIENT_ID:-prepush-placeholder}" \
+  GITHUB_APP_CLIENT_SECRET="${GITHUB_APP_CLIENT_SECRET:-prepush-placeholder}" \
+  SESSION_PASSWORD="${SESSION_PASSWORD:-prepush-placeholder-session-password-32ch}" \
+  UPSTREAM_REPO="${UPSTREAM_REPO:-jaredzwick/equity-platform}" \
+  NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-http://localhost:3040}" \
+    build_app landing
+fi
+
+exit 0

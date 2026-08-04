@@ -127,35 +127,38 @@ export async function provisionCronFromForm(formData: FormData): Promise<void> {
   //    without waiting for a git-watching Application (we don't have one for
   //    crons yet — see follow-up in the README roadmap).
   try {
-    await batch().createNamespacedCronJob(namespace, {
-      apiVersion: "batch/v1",
-      kind: "CronJob",
-      metadata: {
-        name,
-        namespace,
-        labels: {
-          "equity.io/tenant": tenant,
-          "equity.io/managed-by": "console",
+    await batch().createNamespacedCronJob({
+      namespace,
+      body: {
+        apiVersion: "batch/v1",
+        kind: "CronJob",
+        metadata: {
+          name,
+          namespace,
+          labels: {
+            "equity.io/tenant": tenant,
+            "equity.io/managed-by": "console",
+          },
         },
-      },
-      spec: {
-        schedule,
-        concurrencyPolicy,
-        successfulJobsHistoryLimit: 3,
-        failedJobsHistoryLimit: 1,
-        jobTemplate: {
-          spec: {
-            template: {
-              spec: {
-                restartPolicy: "OnFailure",
-                containers: [
-                  {
-                    name: "worker",
-                    image,
-                    command: ["/bin/sh", "-c"],
-                    args: [command],
-                  },
-                ],
+        spec: {
+          schedule,
+          concurrencyPolicy,
+          successfulJobsHistoryLimit: 3,
+          failedJobsHistoryLimit: 1,
+          jobTemplate: {
+            spec: {
+              template: {
+                spec: {
+                  restartPolicy: "OnFailure",
+                  containers: [
+                    {
+                      name: "worker",
+                      image,
+                      command: ["/bin/sh", "-c"],
+                      args: [command],
+                    },
+                  ],
+                },
               },
             },
           },
