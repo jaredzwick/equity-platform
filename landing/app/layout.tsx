@@ -3,7 +3,11 @@ import Link from "next/link";
 import { getSession } from "@/lib/session";
 import "./globals.css";
 
-const SITE_URL = "https://lamboapp.com";
+// www is canonical — Vercel 308-redirects apex → www by default. Indexing API
+// rejects redirected URLs ("Failed to verify the URL ownership"), so every
+// generated URL (metadata, JSON-LD, sitemap, OG image, IndexNow ping) sticks
+// to www. Same pattern as CJS uses for www.careerjumpship.com.
+const SITE_URL = "https://www.lamboapp.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

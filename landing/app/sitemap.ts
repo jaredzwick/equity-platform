@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 // (mirrors the CJS pattern — no direct DB access from Next.js).
 // The API paginates at 5000/request; we walk pages until Total is reached.
 
-const SITE_URL = "https://lamboapp.com";
+const SITE_URL = "https://www.lamboapp.com";
 const PYPES_API_URL =
   process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
 

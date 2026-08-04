@@ -92,7 +92,7 @@ export default async function Image() {
           }}
         >
           <div>🏎️ · 💎🙌 · When lambo?</div>
-          <div>lamboapp.com</div>
+          <div>www.lamboapp.com</div>
         </div>
       </div>
     ),

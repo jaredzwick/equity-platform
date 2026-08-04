@@ -10,7 +10,7 @@ import { notFound } from "next/navigation";
 
 const PYPES_API_URL =
   process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
-const SITE_URL = "https://lamboapp.com";
+const SITE_URL = "https://www.lamboapp.com";
 
 // Revalidate once per hour. Deal enrichment writes once; the row itself
 // rarely changes after publish. ISR keeps the page fast + fresh without
