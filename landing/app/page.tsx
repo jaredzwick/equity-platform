@@ -216,10 +216,6 @@ export default async function HomePage({ searchParams }: Props) {
             disclaimer="LP has requested anonymity. LP is also completely fabricated."
           />
         </div>
-
-        <div className="mt-10 rounded-2xl border border-yellow-400/20 bg-yellow-400/[0.03] p-6 text-center text-xs text-yellow-200/70">
-          ⚠️ <strong className="text-yellow-100">Doubly-obvious disclaimer:</strong> every testimonial on this page is fake. Every one. Not one is real. We made them up. Do your own diligence. Losses may exceed deposits. Past performance is not indicative of future Lambos. The AI is real. The deals are real. The people quoted above are not. Read the actual thesis + red flags on any deal before you wire a dollar. Then still call a lawyer. This is not financial advice.
-        </div>
       </AnimatedSection>
 
       {/* STACK */}

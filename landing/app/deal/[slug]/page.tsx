@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import DealThesis from "@/components/DealThesis";
 
 // SSR-rendered SEO landing page for one enriched deal. Backed by
 // GET /lamboapp/public/deals/{slug} on the pypes.dev Go API (mirrors the
@@ -170,14 +171,7 @@ export default async function DealPage({ params }: PageProps) {
           <Chip>Source: {deal.source}</Chip>
         </div>
 
-        {deal.thesis && (
-          <section className="mt-12 rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
-            <div className="mb-3 text-xs font-mono uppercase tracking-widest text-yellow-400">
-              The thesis
-            </div>
-            <p className="text-lg leading-relaxed text-white/90">{deal.thesis}</p>
-          </section>
-        )}
+        {deal.thesis && <DealThesis thesis={deal.thesis} />}
 
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           {Array.isArray(deal.red_flags) && deal.red_flags.length > 0 && (
