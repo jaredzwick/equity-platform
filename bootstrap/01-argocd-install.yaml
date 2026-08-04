@@ -6,15 +6,21 @@
 # To upgrade ArgoCD: bump the version tag below, run local/up.sh, verify,
 # then commit. Do NOT track the resolved manifest in git — reference only.
 #
-# Version: v2.13.1 (2025-11 release)
+# Version: v3.4.6 (2026-07-31 release, current stable)
 # Upstream: https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/
 #
 # This file is a placeholder documenting the pin. up.sh actually references
 # the upstream URL directly:
 #
-#   ARGOCD_VERSION=v2.13.1
+#   ARGOCD_VERSION=v3.4.6
 #   kubectl apply -n argocd -f \
 #     "https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
+#
+# Bumped from v2.13.1 → v3.4.6 so ArgoCD's bundled OpenAPI schema recognizes
+# fields added in Kubernetes 1.33+ (e.g. Deployment .status.terminatingReplicas).
+# Without this, apps on newer clusters hit ComparisonError:
+#   "error building typed value from live resource: .status.terminatingReplicas:
+#    field not declared in schema"
 #
 # When migrating to a HA / prod deployment, switch to the ha/install.yaml variant.
 apiVersion: v1
@@ -23,6 +29,6 @@ metadata:
   name: argocd-version-pin
   namespace: argocd
 data:
-  version: "v2.13.1"
+  version: "v3.4.6"
   variant: "install.yaml"
-  upstream: "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.1/manifests/install.yaml"
+  upstream: "https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.6/manifests/install.yaml"

@@ -30,3 +30,12 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  # The NATS Helm chart renders `creationTimestamp: null` inside the
+  # StatefulSet's volumeClaimTemplates[].metadata. The Kube API strips
+  # nulls on write, so without this ignore rule the app is perma-OutOfSync.
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jqPathExpressions:
+        - .spec.volumeClaimTemplates[]?.metadata.creationTimestamp
