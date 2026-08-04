@@ -8,6 +8,7 @@ import { NextRequest } from "next/server";
 import { loadProfile } from "@/lib/business-profile";
 import { generateLogo, buildLogoPrompt } from "@/lib/openai-images";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
+import { checkEntitlement } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,16 @@ export async function POST(
   }
   const directive = String(body.directive ?? "").trim();
   if (!directive) return Response.json({ error: "directive required" }, { status: 400 });
+
+  // Entitlement gate. OSS default = always allow. Hosted SaaS = per-plan
+  // metering via COMMERCIAL_ENTITLEMENTS_MODULE (see lib/entitlements.ts).
+  const gate = await checkEntitlement("ai.logo_generate", { tenant });
+  if (!gate.ok) {
+    return Response.json(
+      { error: gate.reason, upgrade_url: gate.upgrade_url },
+      { status: 402 },
+    );
+  }
 
   const profile = (await loadProfile(tenant).catch(() => null)) ?? {};
   const prompt = buildLogoPrompt({

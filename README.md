@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![MIT License](https://img.shields.io/badge/license-MIT-6366f1)](LICENSE)
+[![BSL 1.1](https://img.shields.io/badge/license-BSL_1.1-6366f1)](LICENSE)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.30+-326ce5)](https://kubernetes.io/)
 [![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD_2.13-ef7b4d)](https://argo-cd.readthedocs.io/)
 [![NATS](https://img.shields.io/badge/events-NATS_JetStream-27aae1)](https://nats.io/)
@@ -270,4 +270,12 @@ Verified end-to-end on every push: shellcheck + yamllint + kubeconform against `
 
 ## License
 
-MIT © 2026 Pypes LLC. See [LICENSE](./LICENSE).
+**Business Source License 1.1** © 2026 Pypes LLC. Auto-converts to Apache 2.0 on **2030-08-03**. See [LICENSE](./LICENSE) + [NOTICE](./NOTICE).
+
+**TL;DR:**
+- ✅ Self-host it internally to run your own business — free forever.
+- ✅ Read, modify, fork, redistribute the source.
+- ❌ Offer it as a hosted/managed SaaS to third parties that competes with Pypes LLC's hosted version — that needs a commercial license (`commercial@pypes.dev`).
+- 🔓 On 2030-08-03 (or four years after each release, whichever is later), the license auto-converts to Apache 2.0.
+
+Pypes LLC operates a commercial **hosted equity-platform** — a separate offering not covered by this repository. See [COMMERCIAL_BOUNDARY.md](./COMMERCIAL_BOUNDARY.md) for how the OSS core and commercial layer are split.
