@@ -1,8 +1,12 @@
 import type { MetadataRoute } from "next";
+import { listDocsTopics } from "@/lib/docs-content";
 
 // Deal-page sitemap. Pulls the slug + published_at feed from the Go API
 // (mirrors the CJS pattern — no direct DB access from Next.js).
 // The API paginates at 5000/request; we walk pages until Total is reached.
+//
+// Docs are added from the filesystem via listDocsTopics() — each markdown
+// file's frontmatter `lastmod` becomes its sitemap lastModified.
 
 const SITE_URL = "https://www.lamboapp.com";
 const PYPES_API_URL =
@@ -41,10 +45,28 @@ async function fetchPage(offset: number, limit: number): Promise<ApiResp | null>
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const docs = await listDocsTopics();
+  const docsIndexLastmod = docs.reduce<Date>((max, d) => {
+    const parsed = new Date(d.lastmod);
+    return parsed > max ? parsed : max;
+  }, new Date(0));
+
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, lastModified: new Date(), changeFrequency: "daily", priority: 1.0 },
-    { url: `${SITE_URL}/docs`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
+    {
+      url: `${SITE_URL}/docs`,
+      lastModified: isFinite(docsIndexLastmod.getTime()) && docsIndexLastmod.getTime() > 0 ? docsIndexLastmod : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
   ];
+
+  const docsRoutes: MetadataRoute.Sitemap = docs.map((d) => ({
+    url: `${SITE_URL}/docs/${d.slug}`,
+    lastModified: new Date(d.lastmod),
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
 
   const deals = await fetchAllDealSlugs();
   const dealRoutes: MetadataRoute.Sitemap = deals.map((d) => ({
@@ -54,5 +76,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...dealRoutes];
+  return [...staticRoutes, ...docsRoutes, ...dealRoutes];
 }

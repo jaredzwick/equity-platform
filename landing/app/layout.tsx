@@ -215,7 +215,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <FooterCol
                   title="Legal"
                   links={[
-                    ["Not financial advice", "/docs#disclaimer"],
+                    ["Not financial advice", "/docs/disclaimer"],
+                    ["Licensing (BSL 1.1)", "/docs/licensing"],
                     ["Commercial boundary", "https://github.com/jaredzwick/equity-platform/blob/main/COMMERCIAL_BOUNDARY.md"],
                   ]}
                 />

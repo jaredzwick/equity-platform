@@ -1,97 +1,154 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import SignInButton from "@/components/SignInButton";
+import DocsIcon from "@/components/DocsIcon";
+import { listDocsCategories, listDocsTopics } from "@/lib/docs-content";
 
-export const metadata = {
-  title: "Docs — equity-platform",
-  description: "How the hosted onramp works, and what happens after you sign in.",
+const SITE_URL = "https://www.lamboapp.com";
+
+export const metadata: Metadata = {
+  title: "Docs — equity-platform + LamboApp",
+  description:
+    "How the one-command Kubernetes platform works, how the AI deal-sourcing layer screens ~100 businesses a day, and how to self-host all of it.",
+  keywords: [
+    "equity-platform docs",
+    "LamboApp documentation",
+    "GitOps",
+    "Kubernetes platform",
+    "self-hosting",
+    "AI deal sourcing",
+  ],
+  alternates: { canonical: "/docs" },
+  openGraph: {
+    type: "website",
+    url: `${SITE_URL}/docs`,
+    title: "Docs — equity-platform + LamboApp",
+    description:
+      "Everything from the 3-minute quickstart to self-hosting to how the AI scores every deal.",
+  },
 };
 
-export default function DocsPage() {
+export default async function DocsIndexPage() {
+  const [categories, allTopics] = await Promise.all([
+    listDocsCategories(),
+    listDocsTopics(),
+  ]);
+
+  const startHere = allTopics.find((t) => t.category === "Start here");
+  const remaining = categories.filter((c) => c.name !== "Start here");
+
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16 prose-invert">
-      <h1 className="text-3xl font-semibold tracking-tight">Quickstart</h1>
-      <p className="mt-4 text-[color:var(--color-muted)]">
-        The equity-platform is a one-command Kubernetes stack for running multiple
-        businesses on shared local infrastructure. The hosted onramp does one thing:
-        gives you your own fork of the platform repo and walks you through booting it.
-      </p>
+    <main className="mx-auto max-w-5xl px-6 py-16">
+      <header className="mb-12 max-w-2xl">
+        <p className="text-xs font-mono uppercase tracking-[0.2em] text-yellow-400">
+          Docs
+        </p>
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+          How the machine works.
+        </h1>
+        <p className="mt-4 text-lg leading-relaxed text-white/70">
+          A one-command Kubernetes platform with an AI deal-sourcing layer on top.
+          Everything here is open source (BSL 1.1 → Apache 2.0 in 2030). Self-host
+          it forever.
+        </p>
+      </header>
 
-      <h2 className="mt-10 text-xl font-medium">The 30-second version</h2>
-      <ol className="mt-3 list-decimal list-inside space-y-1 text-sm">
-        <li>Sign in with GitHub.</li>
-        <li>We fork <code>jaredzwick/equity-platform</code> to your account.</li>
-        <li>Install the equity-console GitHub App on your fork.</li>
-        <li>
-          <code>git clone</code> your fork, then <code>./local/up.sh</code>.
-        </li>
-        <li>
-          <code>cd console &amp;&amp; npm run dev</code> → open{" "}
-          <a href="http://localhost:3030" className="underline">localhost:3030</a>.
-        </li>
-      </ol>
+      {startHere && (
+        <Link
+          href={`/docs/${startHere.slug}`}
+          className="group mb-16 block overflow-hidden rounded-2xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/[0.08] via-orange-500/[0.04] to-transparent p-8 transition-colors hover:border-yellow-400/50"
+        >
+          <div className="flex items-start gap-5">
+            <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-yellow-500/40 bg-yellow-500/[0.08] text-yellow-300">
+              <DocsIcon name={startHere.icon} className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-mono uppercase tracking-wider text-yellow-400">
+                Start here · {startHere.readingMinutes} min read
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-white group-hover:text-yellow-200">
+                {startHere.title}
+              </h2>
+              <p className="mt-2 text-base leading-relaxed text-white/70">
+                {startHere.summary}
+              </p>
+              <p className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-yellow-400 group-hover:text-yellow-300">
+                Read it
+                <span aria-hidden>→</span>
+              </p>
+            </div>
+          </div>
+        </Link>
+      )}
 
-      <div className="mt-8">
-        <SignInButton label="Start — sign in with GitHub" />
+      <div className="space-y-14">
+        {remaining.map((cat) => (
+          <section key={cat.name} aria-labelledby={`cat-${cat.name}`}>
+            <h2
+              id={`cat-${cat.name}`}
+              className="mb-5 text-xs font-mono font-semibold uppercase tracking-[0.2em] text-white/50"
+            >
+              {cat.name}
+            </h2>
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {cat.topics.map((t) => (
+                <li key={t.slug}>
+                  <Link
+                    href={`/docs/${t.slug}`}
+                    className="group flex h-full gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.04]"
+                  >
+                    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-black/40 text-white/60 transition-colors group-hover:border-yellow-500/40 group-hover:text-yellow-300">
+                      <DocsIcon name={t.icon} className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-[15px] font-semibold leading-tight text-white group-hover:text-yellow-200">
+                        {t.title}
+                      </h3>
+                      <p className="mt-1.5 text-sm leading-relaxed text-white/60">
+                        {t.summary}
+                      </p>
+                      <p className="mt-2 text-xs text-white/40">
+                        {t.readingMinutes} min read
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
 
-      <h2 className="mt-14 text-xl font-medium">Prerequisites</h2>
-      <ul className="mt-3 list-disc list-inside space-y-1 text-sm">
-        <li>Docker Desktop (or Colima) running</li>
-        <li>Node.js 20+</li>
-        <li>
-          Homebrew for macOS: <code>brew install kind kubectl helm</code>
-        </li>
-      </ul>
+      {allTopics.length === 0 && (
+        <p className="mt-10 text-sm text-white/50">No docs yet.</p>
+      )}
 
-      <h2 className="mt-14 text-xl font-medium">How it works</h2>
-      <p className="mt-3 text-sm">
-        Sign-in triggers a standard GitHub OAuth web flow against our GitHub App. On
-        callback we <code>POST /repos/{"{"}upstream{"}"}/forks</code> — GitHub creates a
-        fork under your account (or returns the existing one). We store your access
-        token and fork name in an encrypted session cookie and redirect you to{" "}
-        <Link href="/onboarding" className="underline">/onboarding</Link>.
-      </p>
-      <p className="mt-3 text-sm">
-        The App install step is separate from sign-in. It grants your local console
-        permission to write YAML back to your fork over the GitHub API. Without it,
-        every provisioning action fails with a 404.
-      </p>
-
-      <h2 className="mt-14 text-xl font-medium">Why we don&rsquo;t host the whole platform</h2>
-      <p className="mt-3 text-sm">
-        The console talks directly to a live Kubernetes cluster via the k8s API. Vercel
-        is serverless — no cluster, no persistent connections. We keep sign-in and
-        onboarding on Vercel; everything that touches your cluster stays on your
-        machine. If you want a fully hosted control plane, get in touch.
-      </p>
-
-      <h2 className="mt-14 text-xl font-medium">Troubleshooting</h2>
-      <dl className="mt-3 space-y-4 text-sm">
-        <div>
-          <dt className="font-medium">Fork is stuck &ldquo;preparing&rdquo;</dt>
-          <dd className="mt-1 text-[color:var(--color-muted)]">
-            GitHub fork creation is async — usually &lt;30s, sometimes up to 5 min. If
-            it&rsquo;s still stuck after that, refresh the onboarding page. If the fork
-            appears on your GitHub account but not here, sign out and back in to
-            refresh the session.
-          </dd>
-        </div>
-        <div>
-          <dt className="font-medium">CSRF error after sign-in</dt>
-          <dd className="mt-1 text-[color:var(--color-muted)]">
-            Your browser blocked the state cookie (usually strict privacy extensions).
-            Try again in a normal (non-private) window.
-          </dd>
-        </div>
-        <div>
-          <dt className="font-medium">Local console shows &ldquo;GitHub write failed: 404&rdquo;</dt>
-          <dd className="mt-1 text-[color:var(--color-muted)]">
-            The App isn&rsquo;t installed on your fork. Come back here and use the
-            &ldquo;Install App&rdquo; button on{" "}
-            <Link href="/onboarding" className="underline">/onboarding</Link>.
-          </dd>
-        </div>
-      </dl>
-    </div>
+      <section
+        aria-labelledby="get-in-touch"
+        className="mt-16 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8"
+      >
+        <h2
+          id="get-in-touch"
+          className="text-xs font-mono font-semibold uppercase tracking-[0.2em] text-white/50"
+        >
+          Something missing?
+        </h2>
+        <p className="mt-3 text-lg font-semibold text-white">
+          Open an issue or a PR on GitHub.
+        </p>
+        <p className="mt-3 text-base leading-relaxed text-white/70">
+          The docs live in <code className="rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[13px] text-yellow-200">landing/content/docs/</code>{" "}
+          on the repo. Every markdown file is a page. Drop one in, open a PR, it
+          ships on the next deploy.
+        </p>
+        <a
+          href="https://github.com/jaredzwick/equity-platform"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-5 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
+        >
+          jaredzwick/equity-platform →
+        </a>
+      </section>
+    </main>
   );
 }
