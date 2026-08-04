@@ -4,9 +4,10 @@
 
 <div align="center">
 
+[![GitHub stars](https://img.shields.io/github/stars/jaredzwick/equity-platform?style=flat&color=f59e0b&label=%E2%98%85%20stars)](https://github.com/jaredzwick/equity-platform/stargazers)
 [![BSL 1.1](https://img.shields.io/badge/license-BSL_1.1-6366f1)](LICENSE)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.30+-326ce5)](https://kubernetes.io/)
-[![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD_2.13-ef7b4d)](https://argo-cd.readthedocs.io/)
+[![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD_3.4-ef7b4d)](https://argo-cd.readthedocs.io/)
 [![NATS](https://img.shields.io/badge/events-NATS_JetStream-27aae1)](https://nats.io/)
 [![Next.js](https://img.shields.io/badge/console-Next.js_15-000000)](https://nextjs.org/)
 
@@ -99,6 +100,10 @@ Routes: `/master` = aggregate, `/<slug>` = per-business drill-in.
 ---
 
 ## Hosted onramp
+
+<div align="center">
+  <img src="local/landing-hero.png" alt="equity-platform landing site" width="100%"/>
+</div>
 
 The fastest way in: visit the hosted landing site → sign in with GitHub → we fork this repo to your account. Then clone your fork and boot locally. Marketing + auth live on Vercel (`landing/`); the platform itself runs on your machine (there's no cluster on Vercel).
 

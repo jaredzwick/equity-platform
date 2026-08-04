@@ -6,6 +6,7 @@ import FeatureCard from "@/components/FeatureCard";
 import HowItWorks from "@/components/HowItWorks";
 import HeroSceneClient from "@/components/HeroSceneClient";
 import AuthErrorBanner from "@/components/AuthErrorBanner";
+import TerminalPanel from "@/components/TerminalPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -28,59 +29,73 @@ export default async function HomePage({ searchParams }: Props) {
           <HeroSceneClient />
         </div>
 
-        {/* Foreground content */}
-        <div className="relative mx-auto flex min-h-[100svh] max-w-6xl flex-col items-start justify-center px-6 pb-24 pt-32 md:pt-40">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-xs text-white/70 backdrop-blur">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            Live: open-source, BSL 1.1
-          </div>
-
-          <h1 className="max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight text-white md:text-6xl lg:text-7xl">
-            Run every business you own on{" "}
-            <span className="bg-gradient-to-br from-indigo-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">
-              one Kubernetes platform.
-            </span>
-          </h1>
-
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/70 md:text-lg">
-            The equity-platform gives you a multi-tenant kind cluster, ArgoCD, NATS,
-            per-business namespaces, and a UI-driven provisioning console —{" "}
-            <span className="text-white">booted with one command</span>. Every change
-            is a git commit. Every rollback is <code className="text-cyan-300">git revert</code>.
-          </p>
-
-          <div className="mt-10 flex flex-wrap items-center gap-4">
-            {signedIn ? (
-              <Link
-                href="/onboarding"
-                className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:shadow-indigo-500/50"
+        {/* Foreground content — text on left, terminal on right (desktop) */}
+        <div className="relative mx-auto grid min-h-[100svh] max-w-6xl grid-cols-1 items-center gap-10 px-6 pb-24 pt-32 md:pt-40 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-14">
+          <div className="flex flex-col items-start">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-xs text-white/70 backdrop-blur">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Open source · BSL 1.1
+              <span className="text-white/30">·</span>
+              <a
+                href="https://github.com/jaredzwick/equity-platform"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-white"
               >
-                Continue setup
-                <ArrowRight />
+                Star on GitHub →
+              </a>
+            </div>
+
+            <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight text-white md:text-5xl lg:text-6xl">
+              Run every business you own on{" "}
+              <span className="bg-gradient-to-br from-indigo-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">
+                one Kubernetes platform.
+              </span>
+            </h1>
+
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
+              Multi-tenant kind cluster, ArgoCD, NATS, per-business namespaces, and a
+              UI-driven provisioning console —{" "}
+              <span className="text-white">booted with one command</span>. Every change
+              is a git commit. Every rollback is{" "}
+              <code className="text-cyan-300">git revert</code>.
+            </p>
+
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              {signedIn ? (
+                <Link
+                  href="/onboarding"
+                  className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:shadow-indigo-500/50"
+                >
+                  Continue setup
+                  <ArrowRight />
+                </Link>
+              ) : (
+                <SignInButton label="Fork & boot in 3 minutes" />
+              )}
+              <Link
+                href="/docs"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
+              >
+                Read the docs
               </Link>
-            ) : (
-              <SignInButton />
-            )}
-            <Link
-              href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
-            >
-              Read the docs
-            </Link>
-            <span className="text-xs text-white/40">
-              &lt;3 min to boot &middot; $0 to run locally
-            </span>
+            </div>
+
+            {/* Metric row */}
+            <div className="mt-14 grid w-full grid-cols-2 gap-6 sm:grid-cols-4 md:gap-8">
+              <Metric label="Boot time" value="90s" />
+              <Metric label="Setup commands" value="1" />
+              <Metric label="Cost local" value="$0" />
+              <Metric label="Rollback" value="git revert" mono />
+            </div>
           </div>
 
-          {/* Metric row */}
-          <div className="mt-16 grid grid-cols-2 gap-6 sm:grid-cols-4 md:gap-10">
-            <Metric label="Boot time" value="90s" />
-            <Metric label="Setup commands" value="1" />
-            <Metric label="Cost to run local" value="$0" />
-            <Metric label="Rollback path" value="git revert" mono />
+          {/* Terminal panel — devtool-native visual */}
+          <div className="w-full">
+            <TerminalPanel />
           </div>
         </div>
 
