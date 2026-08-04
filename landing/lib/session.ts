@@ -8,6 +8,14 @@ export type Session = {
   login?: string;
   avatarUrl?: string;
   githubId?: number;
+  // Buyer-side identity: cached after the OAuth callback POSTs to
+  // pypes /lamboapp/buyers/upsert-by-github. Any authed proxy route
+  // reads githubId from here and forwards to the backend as
+  // X-Buyer-Github-Id. name + email cached for the dashboard chip and
+  // for PATCH /buy-box flows that don't need to re-hit GitHub.
+  name?: string;
+  email?: string;
+  buyerId?: string;
   // Owner/name of the user's fork of the upstream template.
   targetRepo?: string;
 };

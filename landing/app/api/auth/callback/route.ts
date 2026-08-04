@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { exchangeCodeForToken } from "@/lib/github-oauth-web";
 import { fetchUser } from "@/lib/github-user";
+import { upsertBuyerByGithub } from "@/lib/lamboapp-backend";
 import { getSession, stateCookieName } from "@/lib/session";
 import { siteUrl } from "@/lib/env";
 
@@ -19,10 +20,14 @@ export const dynamic = "force-dynamic";
 // Steps:
 //   1. Verify state matches the cookie we set in /api/auth/login (CSRF).
 //   2. Exchange code for a user access token.
-//   3. Fetch user identity for the session chip.
-//   4. Persist { githubToken, login, avatarUrl, githubId } in the session.
-//      targetRepo is set later by /onboarding once the fork exists.
-//   5. Redirect to /onboarding.
+//   3. Fetch user identity (id, login, name, avatar, email) via /user +
+//      /user/emails fallback.
+//   4. POST /lamboapp/buyers/upsert-by-github on the pypes Go API so a
+//      buyers row exists (or is attached to an existing dogfood row by
+//      email). This makes the /api/buyer/me proxy return data on the
+//      next request rather than 404.
+//   5. Persist identity in the iron-session.
+//   6. Redirect to /onboarding.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
@@ -54,14 +59,54 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return redirectHome("user_fetch_failed");
   }
 
+  // Split GitHub's single-string "name" into first/last for the backend's
+  // AppFields / display. Best-effort — nothing depends on parsing correctly.
+  const firstName = user.name?.split(" ")[0] ?? "";
+  const lastName = user.name?.split(" ").slice(1).join(" ") ?? "";
+
+  // Backend upsert. When the user has a private email + declined the
+  // email.readonly scope, user.email may be "" — the backend rejects
+  // that with 422. In that case we bail before session.save() so the
+  // next sign-in attempt (after they authorize email) can succeed.
+  if (!user.email) {
+    return redirectHome("missing_email", "grant email access on the GitHub App to continue");
+  }
+
+  const buyerResult = await upsertBuyerByGithub({
+    githubId: user.id,
+    githubLogin: user.login,
+    email: user.email,
+    avatarUrl: user.avatarUrl,
+    firstName,
+    lastName,
+  });
+
+  if (!buyerResult.ok) {
+    // 409 = email owned by different github account. 422 = missing
+    // required field. Both are recoverable — surface a message the
+    // landing page can display.
+    if (buyerResult.status === 409) {
+      return redirectHome("email_owned", "this email is already linked to a different github account");
+    }
+    return redirectHome(`backend_${buyerResult.status}`, buyerResult.error);
+  }
+
   const session = await getSession();
   session.githubToken = tokenResult.accessToken;
   session.login = user.login;
   session.avatarUrl = user.avatarUrl;
   session.githubId = user.id;
+  session.name = user.name;
+  session.email = user.email;
+  session.buyerId = buyerResult.data.buyer_id;
   await session.save();
 
-  const res = NextResponse.redirect(`${siteUrl()}/onboarding`);
+  // First-time buyer with no buy-box → onboarding. Returning buyer
+  // with buy-box → dashboard (renders digest history + subscription).
+  // has_buy_box is false for both new signups and attached dogfood
+  // buyers who happened to lack a buy-box; both should hit onboarding.
+  const target = buyerResult.data.has_buy_box ? "/dashboard" : "/onboarding";
+  const res = NextResponse.redirect(`${siteUrl()}${target}`);
   res.cookies.delete(stateCookieName);
   return res;
 }

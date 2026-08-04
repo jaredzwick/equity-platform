@@ -69,3 +69,19 @@ export function siteUrl(): string {
 export function callbackUrl(): string {
   return `${siteUrl()}/api/auth/callback`;
 }
+
+// Pypes Go API base URL — where our authed proxy routes forward calls
+// for buyer identity, buy-box, digest history. Same host used by the
+// public /deal/[slug] page for enriched-deal reads. Public so both
+// server and client components can read the deal-detail URL, but the
+// bearer stays server-only.
+export function pypesApiUrl(): string {
+  return optional("NEXT_PUBLIC_PYPES_API_URL", "https://api.pypes.dev");
+}
+
+// Shared bearer for the pypes /lamboapp/buyers/* proxy endpoints.
+// Server-only — never expose to client code. Rotated on the
+// jaredzwick/pypes GH repo alongside ADMIN_LAMBOAPP_TOKEN.
+export function lamboappBackendBearer(): string {
+  return required("LAMBOAPP_BACKEND_BEARER");
+}
