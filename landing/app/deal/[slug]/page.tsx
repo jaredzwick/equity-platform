@@ -1,28 +1,75 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDealBySlug, type Deal } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 300;
+// SSR-rendered SEO landing page for one enriched deal. Backed by
+// GET /lamboapp/public/deals/{slug} on the pypes.dev Go API (mirrors the
+// careerjumpship /jobs/[slug] pattern — no direct DB access from Next.js).
+// Rendered with Product JSON-LD + rich metadata so search engines index it,
+// and pinged via Indexing API + IndexNow from n8n after the enricher writes.
 
+const PYPES_API_URL =
+  process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
 const SITE_URL = "https://lamboapp.com";
+
+// Revalidate once per hour. Deal enrichment writes once; the row itself
+// rarely changes after publish. ISR keeps the page fast + fresh without
+// forcing a full rebuild on every refresh.
+export const revalidate = 3600;
+
+type PublicDeal = {
+  id: string;
+  slug: string;
+  source: string;
+  source_url: string;
+  origin: "online" | "smb";
+  name: string;
+  industry?: string;
+  normalized_industry?: string;
+  currency?: string;
+  asking_price?: number;
+  annual_revenue?: number;
+  annual_profit?: number;
+  sde_multiple?: number;
+  sde_multiple_computed?: number;
+  location?: string;
+  deal_fit_score?: number;
+  thesis?: string;
+  red_flags?: string[];
+  growth_signals?: string[];
+  seo_title?: string;
+  seo_description?: string;
+  seo_body_html?: string;
+  published_at?: number;
+};
+
+async function fetchPublicDeal(slug: string): Promise<PublicDeal | null> {
+  try {
+    const res = await fetch(
+      `${PYPES_API_URL}/lamboapp/public/deals/${encodeURIComponent(slug)}`,
+      { next: { revalidate: 3600 } },
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) return null;
+    return (await res.json()) as PublicDeal;
+  } catch {
+    return null;
+  }
+}
 
 type PageProps = { params: Promise<{ slug: string }> };
 
-// Per-deal metadata for SEO (title, description, canonical, OG, twitter).
-// Falls back to sensible defaults if a field is null.
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const deal = await getDealBySlug(slug).catch(() => null);
+  const deal = await fetchPublicDeal(slug);
   if (!deal) {
     return { title: "Deal not found", robots: { index: false, follow: false } };
   }
-  const title = deal.seo_title ?? deal.name;
+  const title = deal.seo_title || deal.name;
   const description =
-    deal.seo_description ??
+    deal.seo_description ||
     `${deal.name} — asking ${money(deal.asking_price)}, ${deal.origin} business. AI fit score: ${deal.deal_fit_score ?? "N/A"}.`;
-  const url = `${SITE_URL}/deal/${deal.seo_slug}`;
+  const url = `${SITE_URL}/deal/${deal.slug}`;
   return {
     title,
     description,
@@ -49,7 +96,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function DealPage({ params }: PageProps) {
   const { slug } = await params;
-  const deal = await getDealBySlug(slug).catch(() => null);
+  const deal = await fetchPublicDeal(slug);
   if (!deal) notFound();
 
   const fitScore = deal.deal_fit_score ?? 0;
@@ -62,12 +109,12 @@ export default async function DealPage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: deal.name,
-    description: deal.seo_description ?? deal.thesis ?? deal.name,
-    url: `${SITE_URL}/deal/${deal.seo_slug}`,
+    description: deal.seo_description || deal.thesis || deal.name,
+    url: `${SITE_URL}/deal/${deal.slug}`,
     offers: deal.asking_price
       ? {
           "@type": "Offer",
-          priceCurrency: deal.currency ?? "USD",
+          priceCurrency: deal.currency || "USD",
           price: deal.asking_price,
           availability: "https://schema.org/InStock",
           url: deal.source_url,
@@ -89,14 +136,12 @@ export default async function DealPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
       <article className="mx-auto max-w-4xl px-6 py-16 md:py-24">
-        {/* Breadcrumb */}
         <nav className="mb-8 text-xs text-white/40">
           <Link href="/" className="hover:text-white">LamboApp</Link>
           <span className="mx-2">/</span>
           <span className="text-white/60">Deal</span>
         </nav>
 
-        {/* Verdict + title */}
         <div className={`mb-6 inline-flex items-center gap-3 rounded-full border ${verdict.bg} px-4 py-1.5`}>
           <span className={`text-sm font-bold uppercase tracking-wide ${verdict.color}`}>
             {verdict.label}
@@ -111,7 +156,6 @@ export default async function DealPage({ params }: PageProps) {
           {deal.name}
         </h1>
 
-        {/* Financial snapshot */}
         <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           <Stat label="Asking" value={money(deal.asking_price)} />
           <Stat label="Annual revenue" value={money(deal.annual_revenue)} />
@@ -119,7 +163,6 @@ export default async function DealPage({ params }: PageProps) {
           <Stat label="SDE multiple" value={deal.sde_multiple_computed ? `${deal.sde_multiple_computed.toFixed(1)}x` : "—"} />
         </div>
 
-        {/* Meta chips */}
         <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
           <Chip>{deal.origin === "smb" ? "🏭 SMB" : "💻 Online"}</Chip>
           {deal.normalized_industry && <Chip>{humanize(deal.normalized_industry)}</Chip>}
@@ -127,7 +170,6 @@ export default async function DealPage({ params }: PageProps) {
           <Chip>Source: {deal.source}</Chip>
         </div>
 
-        {/* Thesis */}
         {deal.thesis && (
           <section className="mt-12 rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
             <div className="mb-3 text-xs font-mono uppercase tracking-widest text-yellow-400">
@@ -137,7 +179,6 @@ export default async function DealPage({ params }: PageProps) {
           </section>
         )}
 
-        {/* Red flags + Growth signals grid */}
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           {Array.isArray(deal.red_flags) && deal.red_flags.length > 0 && (
             <section className="rounded-2xl border border-red-500/20 bg-red-500/[0.03] p-6">
@@ -171,7 +212,6 @@ export default async function DealPage({ params }: PageProps) {
           )}
         </div>
 
-        {/* SEO body HTML (Haiku-generated) */}
         {deal.seo_body_html && (
           <section
             className="prose prose-invert mt-12 max-w-none prose-p:text-white/80 prose-p:leading-relaxed prose-strong:text-white"
@@ -179,7 +219,6 @@ export default async function DealPage({ params }: PageProps) {
           />
         )}
 
-        {/* CTA — go to broker listing */}
         <section className="mt-16 rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-500/15 via-orange-500/10 to-red-500/10 p-8">
           <h2 className="text-2xl font-semibold text-white">Ready to make a move?</h2>
           <p className="mt-2 text-white/70">
@@ -204,7 +243,6 @@ export default async function DealPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Disclaimer */}
         <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/40">
           <strong className="text-white/60">Not financial advice.</strong> LamboApp scrapes public
           broker listings, runs Claude Haiku across them, and surfaces the ones our rubric ranks
@@ -234,7 +272,7 @@ function Chip({ children }: { children: React.ReactNode }) {
   );
 }
 
-function money(n: number | null): string {
+function money(n: number | null | undefined): string {
   if (n === null || n === undefined || !Number.isFinite(n) || n === 0) return "—";
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
