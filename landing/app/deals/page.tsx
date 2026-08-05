@@ -22,16 +22,35 @@ import { DealPagination } from "@/components/deals/DealPagination";
 // scraper can't sweep the corpus.
 
 export const metadata: Metadata = {
-  title: "Browse deals — cash-flowing businesses for sale",
+  title: "Deal flow — cash-flowing SMBs for sale | LamboApp",
   description:
-    "Filter thousands of enriched business-for-sale listings by industry, revenue, SDE multiple, and geography. AI-scored fit ratings on every deal. Free to browse.",
+    "Live search across ~100 new business-for-sale listings per day. Every deal ships with a fit score, a 1-paragraph thesis, and a red-flag list. Filter by industry, revenue, SDE multiple, and geography. Free to browse.",
+  keywords: [
+    "businesses for sale",
+    "SMB acquisition",
+    "buy a business",
+    "SDE multiple",
+    "search fund",
+    "small business acquisition",
+    "cash-flowing business",
+    "buy an SMB",
+    "acquire a business",
+    "business for sale by owner",
+  ],
   alternates: { canonical: "https://www.lamboapp.com/deals" },
   openGraph: {
-    title: "Browse deals — lamboapp.com",
+    title: "Deal flow — cash-flowing SMBs for sale",
     description:
-      "AI-scored business-for-sale listings, filterable by industry, revenue, SDE multiple, and geography.",
+      "Live search across ~100 new listings per day. Every deal ships with a fit score, a thesis, and a red-flag list. Filter by industry, revenue, and multiple. Free to browse.",
     url: "https://www.lamboapp.com/deals",
+    siteName: "LamboApp",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Deal flow — cash-flowing SMBs for sale",
+    description:
+      "~100 fresh listings/day. Every one scored. Every scam flagged. Filter and buy.",
   },
 };
 
