@@ -20,7 +20,7 @@ export default async function NewAppPage({ params, searchParams }: Props) {
   const tenant = await resolveTenant(slug);
   if (!tenant) notFound();
 
-  const configured = isConfigured();
+  const configured = (await isConfigured());
   const configuredRepoUrl = configured ? await repoUrl() : null;
   const defaultNamespace = tenant.namespaces[0] ?? "";
   const defaultValuesYaml = `# Helm values. Empty = chart defaults.\n`;

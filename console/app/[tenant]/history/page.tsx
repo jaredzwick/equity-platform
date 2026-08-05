@@ -11,7 +11,7 @@ export default async function HistoryPage({ params }: Props) {
   const tenant = await resolveTenant(slug);
   if (!tenant) notFound();
 
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return (
       <div className="max-w-3xl">
         <div className="p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">

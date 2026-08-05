@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getFileSha, isConfigured, putFile } from "@/lib/github";
+import { getFileSha, isConfigured, putFile, resolveTargetRepo } from "@/lib/github";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
 
 // Form input for provisioning a new ArgoCD Application.
@@ -33,12 +33,14 @@ function validate(input: NewAppInput): string | null {
   return null;
 }
 
-// Render the ArgoCD Application manifest with a hardcoded git URL for the
-// values ref. This is intentional: the console commits YAML that ArgoCD
-// reconciles as-is (no envsubst step in the reconcile path). Forkers of
-// this repo run local/rewire-fork.sh to swap the URL in bulk.
-function renderApplication(input: NewAppInput): string {
-  const gitRepo = process.env.GITHUB_REPO ?? "jaredzwick/equity-platform";
+// Render the ArgoCD Application manifest. The git URL is resolved from
+// the configured backup target — no more silent "jaredzwick" fallback,
+// which would point brand-new users at the upstream project. The console
+// commits YAML that ArgoCD reconciles as-is (no envsubst step in the
+// reconcile path), so this URL has to be correct at render time.
+async function renderApplication(input: NewAppInput): Promise<string> {
+  const { owner, name } = await resolveTargetRepo();
+  const gitRepo = `${owner}/${name}`;
   return `apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -74,7 +76,7 @@ spec:
 }
 
 export async function provisionApp(input: NewAppInput): Promise<ActionResult> {
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     return { ok: false, error: "GITHUB_TOKEN and GITHUB_REPO must be set in the console env." };
   }
   const validationErr = validate(input);
@@ -108,7 +110,7 @@ export async function provisionApp(input: NewAppInput): Promise<ActionResult> {
     });
     const appCommit = await putFile({
       path: appPath,
-      content: renderApplication(input),
+      content: await renderApplication(input),
       message: `feat(${input.tenant}): provision ${input.name} via console`,
     });
 

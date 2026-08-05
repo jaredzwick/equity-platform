@@ -20,7 +20,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const tenant = await resolveTenant(slug);
   if (!tenant) notFound();
 
-  const configured = isConfigured();
+  const configured = (await isConfigured());
 
   let profile: Awaited<ReturnType<typeof loadProfile>> = null;
   let loadError: string | null = null;

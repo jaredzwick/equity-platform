@@ -14,34 +14,53 @@
 // (create blob → create tree → create commit → update ref).
 
 import { getSession } from "@/lib/session";
+import { readBackupConfig, repoSlugFrom } from "@/lib/backup-config";
 
 const GH_API = "https://api.github.com";
 
-function envRequire(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`${name} not set`);
-  return v;
-}
-
-function repo(): { owner: string; name: string; branch: string } {
-  const full = envRequire("GITHUB_REPO");
-  const [owner, name] = full.split("/");
-  if (!owner || !name) throw new Error(`GITHUB_REPO must be owner/name (got: ${full})`);
-  return { owner, name, branch: process.env.GITHUB_BRANCH ?? "main" };
-}
-
-// The upstream template repo this console is a fork/clone of. Every user's
-// fork gets created from this. Default matches jaredzwick/equity-platform;
-// override in .env.local if you fork the template.
+// The upstream template repo this console is a fork/clone of. Used only
+// as the fork source when a user has an auto-fork session flow — never
+// as a default write target. Overridable via UPSTREAM_REPO env for
+// downstream forks of the OSS project.
 const UPSTREAM_REPO = process.env.UPSTREAM_REPO ?? "jaredzwick/equity-platform";
 
+export class BackupDisabledError extends Error {
+  constructor() {
+    super(
+      "GitHub backup is disabled. Enable it in Agency settings → GitHub, " +
+        "or set GITHUB_REPO in the console env for a headless override.",
+    );
+    this.name = "BackupDisabledError";
+  }
+}
+
 // Resolve the actual repo to write to for this request. Precedence:
-//   1. Session's cached targetRepo (set on sign-in via auto-fork)
-//   2. Session has token+login but no targetRepo → auto-fork upstream, cache
-//   3. Fallback to GITHUB_REPO env (headless/dev)
+//   1. local/.config.json (githubBackup.repoUrl) — the UI-managed opt-in
+//   2. Session's cached targetRepo (set on sign-in via auto-fork)
+//   3. Session has token+login but no targetRepo → auto-fork upstream, cache
+//   4. GITHUB_REPO env — headless/dev override
+//   5. THROW — no more silent default. Backup is opt-in.
 //
-// Async because it may make a network call to POST /forks on first sign-in.
+// Async because it may read a file OR make a network call to POST /forks.
 export async function resolveTargetRepo(): Promise<{ owner: string; name: string; branch: string }> {
+  // 1) Explicit UI-managed backup config wins.
+  try {
+    const cfg = await readBackupConfig();
+    const slug = repoSlugFrom(cfg);
+    if (cfg.githubBackup.enabled && slug) {
+      const [owner, name] = slug.split("/");
+      return {
+        owner,
+        name,
+        branch: cfg.githubBackup.branch ?? process.env.GITHUB_BRANCH ?? "main",
+      };
+    }
+  } catch (e) {
+    console.error("[resolveTargetRepo] backup-config read failed:", e);
+    // Fall through — the other paths still work.
+  }
+
+  // 2 + 3) Session-based flow.
   try {
     const session = await getSession();
     if (session.targetRepo) {
@@ -49,8 +68,6 @@ export async function resolveTargetRepo(): Promise<{ owner: string; name: string
       return { owner, name, branch: process.env.GITHUB_BRANCH ?? "main" };
     }
     if (session.githubToken && session.login) {
-      // Auto-fork on first write. Idempotent: GitHub returns the existing
-      // fork if it already exists.
       const [upOwner, upName] = UPSTREAM_REPO.split("/");
       try {
         const res = await fetch(`${GH_API}/repos/${upOwner}/${upName}/forks`, {
@@ -69,8 +86,6 @@ export async function resolveTargetRepo(): Promise<{ owner: string; name: string
         }
       } catch (e) {
         console.error("[auto-fork] failed:", e);
-        // Don't fail the whole call — the fork may already exist. Continue
-        // with the derived target.
       }
       const targetRepo = `${session.login}/${upName}`;
       session.targetRepo = targetRepo;
@@ -80,8 +95,19 @@ export async function resolveTargetRepo(): Promise<{ owner: string; name: string
   } catch (e) {
     console.error("[resolveTargetRepo] session read failed:", e);
   }
-  // Env fallback
-  return repo();
+
+  // 4) Env fallback for headless / CI setups.
+  const envRepo = process.env.GITHUB_REPO;
+  if (envRepo) {
+    const [owner, name] = envRepo.split("/");
+    if (!owner || !name) {
+      throw new Error(`GITHUB_REPO must be owner/name (got: ${envRepo})`);
+    }
+    return { owner, name, branch: process.env.GITHUB_BRANCH ?? "main" };
+  }
+
+  // 5) No default anymore — opt-in required.
+  throw new BackupDisabledError();
 }
 
 // Auth precedence:
@@ -219,11 +245,16 @@ export async function rawUrl(path: string): Promise<string> {
   return `https://raw.githubusercontent.com/${owner}/${name}/${branch}/${path}`;
 }
 
-// True if either an OAuth session exists OR env fallback is fully set.
-// Session-based auth doesn't need GITHUB_REPO env — it's derived from the
-// user's login via auto-fork.
-export function isConfigured(): boolean {
-  return true; // resolveTargetRepo handles the "unauthenticated" case gracefully
+// True if GitHub backup is enabled AND a write target resolves. Callers
+// use this before invoking put/get to give a clean "backup disabled"
+// UX instead of a stack trace.
+export async function isConfigured(): Promise<boolean> {
+  try {
+    await resolveTargetRepo();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Async: true if we have a real token from anywhere (session or env).

@@ -50,7 +50,7 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
   if (!validSlug(namespace)) {
     redirect(`${backTo}?error=${encodeURIComponent("Namespace must be kebab-case.")}`);
   }
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     redirect(`${backTo}?error=${encodeURIComponent("GITHUB_TOKEN + GITHUB_REPO must be set.")}`);
   }
 

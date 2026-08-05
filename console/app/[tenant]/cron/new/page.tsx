@@ -20,7 +20,7 @@ export default async function NewCronPage({ params, searchParams }: Props) {
   const tenant = await resolveTenant(slug);
   if (!tenant) notFound();
 
-  const configured = isConfigured();
+  const configured = (await isConfigured());
   const configuredRepoUrl = configured ? await repoUrl() : null;
   const defaultNamespace = tenant.namespaces[0] ?? "";
 

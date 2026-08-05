@@ -35,7 +35,7 @@ export async function saveProfileFromForm(formData: FormData): Promise<void> {
   if (tenant === MASTER_SLUG || !tenant) {
     redirect(`${back}?error=${encodeURIComponent("Pick a business first.")}`);
   }
-  if (!isConfigured()) {
+  if (!(await isConfigured())) {
     redirect(`${back}?error=${encodeURIComponent("GITHUB_TOKEN + GITHUB_REPO must be set in console/.env.local.")}`);
   }
 

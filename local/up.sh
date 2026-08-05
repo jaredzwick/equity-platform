@@ -12,10 +12,16 @@
 # GIT_REPO_URL resolution order:
 #   1. --repo-url <url> flag on the command line
 #   2. GIT_REPO_URL env var
-#   3. `git remote get-url origin` from this repo
-#   4. If none: fall back to LOCAL-ONLY mode (cluster + ArgoCD up, but no
-#      app-of-apps reconciliation — you can still apply children by hand for
-#      demo purposes).
+#   3. local/.config.json (githubBackup.repoUrl) — the UI-managed opt-in
+#      set from the console at /master/github
+#   4. If none: LOCAL-ONLY mode (cluster + ArgoCD up, no app-of-apps
+#      reconciliation). Businesses live only in-cluster and are lost on
+#      teardown — enable GitHub backup from the console to persist.
+#
+# The `git remote get-url origin` fallback was removed intentionally:
+# users who cloned the upstream template directly would silently point
+# ArgoCD at the upstream repo, which they don't own and can't write to.
+# See commit history for the mismatch bug that motivated the change.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -80,28 +86,39 @@ kubectl apply -n argocd --server-side --force-conflicts -f "$ARGOCD_URL"
 echo "==> Waiting for ArgoCD server to be ready (may take 2-3 min)"
 kubectl wait --for=condition=available --timeout=300s -n argocd deployment/argocd-server
 
-# Resolve git repo URL.
+# Resolve git repo URL. See header comment for precedence.
+CONFIG_FILE="$SCRIPT_DIR/.config.json"
 GIT_REPO_URL=""
+GIT_REPO_SOURCE=""
+
 if [ -n "$REPO_URL_FLAG" ]; then
   GIT_REPO_URL="$REPO_URL_FLAG"
+  GIT_REPO_SOURCE="--repo-url flag"
 elif [ -n "${GIT_REPO_URL:-}" ]; then
-  : # already set from env
-elif GIT_REPO_URL=$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null); then
-  # Normalize SSH → HTTPS for ArgoCD public-repo path.
-  GIT_REPO_URL=$(echo "$GIT_REPO_URL" | sed -E 's|^git@github\.com:|https://github.com/|; s|\.git$||').git
+  GIT_REPO_SOURCE="GIT_REPO_URL env"
+elif [ -f "$CONFIG_FILE" ]; then
+  # Minimal JSON extraction — avoids a jq dependency for a one-key read.
+  # Matches: "repoUrl": "..." and only when "enabled": true earlier in the file.
+  if grep -q '"enabled"[[:space:]]*:[[:space:]]*true' "$CONFIG_FILE"; then
+    GIT_REPO_URL=$(sed -n 's/.*"repoUrl"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$CONFIG_FILE" | head -1)
+    [ -n "$GIT_REPO_URL" ] && GIT_REPO_SOURCE="$CONFIG_FILE"
+  fi
 fi
 
 if [ -z "$GIT_REPO_URL" ]; then
   echo ""
-  echo "==> LOCAL-ONLY mode (no git remote configured)"
+  echo "==> LOCAL-ONLY mode (GitHub backup not configured)"
   echo "    Cluster + ArgoCD are up. Root app-of-apps NOT applied."
-  echo "    To enable GitOps reconciliation:"
-  echo "      1. git remote add origin https://github.com/<you>/equity-platform.git"
-  echo "      2. git push -u origin main"
-  echo "      3. ./local/up.sh  (re-run — will pick up the remote)"
+  echo "    Businesses live only in-cluster and are lost on teardown."
+  echo ""
+  echo "    To enable GitHub backup:"
+  echo "      Console → Agency → GitHub → enable backup + set your fork URL"
+  echo "      then re-run: ./local/down.sh && ./local/up.sh"
+  echo ""
+  echo "    Or one-shot: ./local/up.sh --repo-url https://github.com/<you>/equity-platform.git"
   echo ""
 else
-  echo "==> Applying root app-of-apps (repo: $GIT_REPO_URL)"
+  echo "==> Applying root app-of-apps (repo: $GIT_REPO_URL, source: $GIT_REPO_SOURCE)"
   export GIT_REPO_URL
   # Single-quoted '${GIT_REPO_URL}' is intentional — envsubst reads its args
   # as a list of variable NAMES to substitute, not values. Double quotes

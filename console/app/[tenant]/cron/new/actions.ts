@@ -89,7 +89,7 @@ export async function provisionCronFromForm(formData: FormData): Promise<void> {
   if (!["Allow", "Forbid", "Replace"].includes(concurrencyPolicy)) {
     redirect(back + `?error=${encodeURIComponent("Invalid concurrency policy.")}`);
   }
-  if (!isConfigured()) redirect(back + `?error=${encodeURIComponent("GITHUB_TOKEN + GITHUB_REPO must be set in console/.env.local.")}`);
+  if (!(await isConfigured())) redirect(back + `?error=${encodeURIComponent("GITHUB_TOKEN + GITHUB_REPO must be set in console/.env.local.")}`);
 
   const tenantObj = await resolveTenant(tenant);
   if (!tenantObj) redirect(back + `?error=${encodeURIComponent(`Unknown tenant: ${tenant}`)}`);

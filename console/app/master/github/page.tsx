@@ -1,8 +1,10 @@
 import { getSession } from "@/lib/session";
-import { resolveTargetRepo } from "@/lib/github";
+import { resolveTargetRepo, BackupDisabledError } from "@/lib/github";
 import { checkAppInstall, type InstallStatus } from "@/lib/github-oauth";
 import { getArgoRootSource, type ArgoRootSource } from "@/lib/k8s";
 import { discoverTenants, discoverTenantsFromRepo, type Tenant } from "@/lib/tenants";
+import { readBackupConfig, type BackupConfig } from "@/lib/backup-config";
+import BackupCard from "./BackupCard";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,19 @@ export default async function GithubStatusPage() {
   const session = await getSession();
   const authed = !!session.githubToken && !!session.login;
 
-  const target = await resolveTargetRepo().catch(() => null);
+  const backupCfg: BackupConfig = await readBackupConfig().catch(() => ({
+    githubBackup: { enabled: false },
+  }));
+  const backupEnabled = backupCfg.githubBackup.enabled;
+
+  // resolveTargetRepo now throws BackupDisabledError when nothing's
+  // configured — that's the whole point of this UI. Swallow it here so
+  // the page still renders the opt-in card.
+  const target = await resolveTargetRepo().catch((e) => {
+    if (e instanceof BackupDisabledError) return null;
+    console.error("[/master/github] resolveTargetRepo:", e);
+    return null;
+  });
   const targetRepo = target ? `${target.owner}/${target.name}` : null;
 
   const [installStatus, argoSource, clusterTenants, repoTenants] = await Promise.all([
@@ -41,6 +55,12 @@ export default async function GithubStatusPage() {
       <p className="text-sm text-[color:var(--color-muted)]">
         Where the console writes to git, where ArgoCD reads from git, and whether they agree.
       </p>
+
+      <BackupCard
+        enabled={backupEnabled}
+        repoUrl={backupCfg.githubBackup.repoUrl}
+        branch={backupCfg.githubBackup.branch}
+      />
 
       {mismatch && (
         <div className="p-4 border border-red-500/40 rounded-lg bg-red-950/60 text-sm">

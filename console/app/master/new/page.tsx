@@ -9,7 +9,7 @@ type Props = { searchParams: Promise<{ error?: string }> };
 
 export default async function NewBusinessPage({ searchParams }: Props) {
   const { error } = await searchParams;
-  const configured = isConfigured();
+  const configured = (await isConfigured());
   const configuredRepoUrl = configured ? await repoUrl() : null;
 
   return (

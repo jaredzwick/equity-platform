@@ -19,7 +19,7 @@ export default async function LogoPage({ params, searchParams }: Props) {
   const tenant = await resolveTenant(slug);
   if (!tenant) notFound();
 
-  const configured = isConfigured();
+  const configured = (await isConfigured());
   const profile = configured ? await loadProfile(slug).catch(() => null) : null;
 
   const currentLogoUrl = (profile?.brand?.logo_url as string | undefined) ?? null;
