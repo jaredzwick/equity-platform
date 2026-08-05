@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const tabs = [
   { href: "/master", label: "Businesses", exact: true },
+  { href: "/master/listings", label: "Seller listings", exact: false },
   { href: "/master/aggregate", label: "Aggregate observability", exact: false },
   { href: "/master/email", label: "Email", exact: false },
   { href: "/master/settings", label: "Agency settings", exact: false },
