@@ -140,20 +140,20 @@ export function DealFilters({
 
       {/* Industry chips */}
       <div className="flex flex-wrap gap-1.5">
-        {INDUSTRY_CHIPS.map((industry) => {
-          const active = activeIndustries.has(industry);
+        {INDUSTRY_CHIPS.map((chip) => {
+          const active = activeIndustries.has(chip.value);
           return (
             <button
-              key={industry}
+              key={chip.value}
               type="button"
-              onClick={() => toggleIndustry(industry)}
+              onClick={() => toggleIndustry(chip.value)}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 active
                   ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-300"
                   : "border-white/10 bg-white/5 text-white/60 hover:border-white/30 hover:text-white"
               }`}
             >
-              {industry}
+              {chip.label}
             </button>
           );
         })}

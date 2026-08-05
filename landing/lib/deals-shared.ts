@@ -54,28 +54,24 @@ export type DealFiltersState = {
   page_size?: number;
 };
 
-// Curated industry chips for the filter panel. Refresh from
-// SELECT normalized_industry, COUNT(*) FROM deals WHERE published_at IS NOT NULL
-// GROUP BY 1 ORDER BY 2 DESC LIMIT 20 whenever inventory shape shifts.
-export const INDUSTRY_CHIPS: readonly string[] = [
-  "SaaS",
-  "E-commerce",
-  "Content / Blog",
-  "Amazon FBA",
-  "Digital Products",
-  "Mobile App",
-  "Marketplace",
-  "Newsletter",
-  "Services",
-  "HVAC",
-  "Restaurant",
-  "Marketing Agency",
-  "Fitness",
-  "Landscaping",
-  "Auto Repair",
-  "Manufacturing",
-  "Distribution",
-  "Real Estate",
+// Industry chips for the filter panel. Each chip has:
+//   - value: the raw Haiku normalized_industry string (used as the API
+//     filter param — exact match on deals.normalized_industry).
+//   - label: human-readable display (Title Case, spaces, punctuation).
+//
+// Sourced 2026-08-04 from a full-corpus scan (all 104 published deals):
+//   ecommerce 35 · other 27 · saas 23 · content_site 15 · agency 3 · service_business 1
+// "other" is intentionally hidden — it's a garbage-bucket value that
+// isn't useful for buyer filtering. Refresh this list when adding new
+// broker sources or when the Haiku enricher prompt changes.
+export type IndustryChip = { value: string; label: string };
+
+export const INDUSTRY_CHIPS: readonly IndustryChip[] = [
+  { value: "ecommerce", label: "E-commerce" },
+  { value: "saas", label: "SaaS" },
+  { value: "content_site", label: "Content / Blog" },
+  { value: "agency", label: "Agency" },
+  { value: "service_business", label: "Services" },
 ];
 
 export const VALID_SORTS: readonly DealsSort[] = [
