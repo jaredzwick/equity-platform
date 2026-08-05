@@ -14,6 +14,51 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+// Primer for the events primitive. Appended to every chat system prompt so
+// the assistant can scaffold event-driven reactions on request. Keep this
+// short — every extra line goes into every turn's token bill. Keep it
+// verbatim-accurate: consumers of the primer paste generated code, so
+// wrong imports or signatures here become bugs there.
+//
+// Source of truth for the actual code: console/lib/events/*.ts + README.md.
+// If you edit this primer, update the README (or vice versa).
+const EVENTS_PRIMER = `--- EVENTS PRIMITIVE (for scaffolding reactions) ---
+
+Subject grammar: events.<tenant>.<domain>.<entity>.<action>.v<n>
+Example: events.pypes.listing.deal.created.v1
+
+Every event carries this envelope:
+  { id, tenant, actor, source, correlationId, ts, schemaVersion, data }
+
+Three main entry points (import from "@/lib/events"):
+
+1) publishEvent<T>({ subject: SubjectParts, data: T, actor: Actor, source: string, correlationId?: string })
+   -> Promise<{ subject, seq, envelope }>. Ensures the tenant stream, dedups on envelope.id.
+
+2) consume<T>({ name: string, tenant: string, filterSubject: string,
+                handler: (env: Envelope<T>) => Promise<void>, maxDeliver?: number })
+   -> Promise<() => Promise<void>>. Idempotent durable consumer. Handler MUST be idempotent.
+   Throw = nack (redeliver up to maxDeliver, default 5).
+
+3) registerEnrich<TIn, TOut>({ name, tenant, filterSubject,
+                                budget?: { currency: "tokens" | "usd_micros", perDay: number },
+                                handler: (env) => EnrichResult<TOut> | null })
+   -> Promise<() => Promise<void>>. The enrich reaction pattern.
+   EnrichResult = { outputSubject: SubjectParts, data: TOut, cost?: number }.
+   Preserves correlationId onto the output event. Charges the budget by cost.
+   Return null to skip publishing.
+
+When the user asks you to "build a reaction", "scaffold X", "add a consumer",
+or similar: emit a complete, compilable TypeScript code block using one of
+these three functions. Fill filterSubject with a subject you actually saw in
+the LIVE STATE above (or say so explicitly if you're inventing it).
+
+Do NOT invent additional exports (no registerRoute/registerDraft/registerAct
+yet — only registerEnrich ships today; the others follow the same shape).
+
+Do NOT emit shell commands to write files. Return code the user pastes.
+--- END EVENTS PRIMITIVE ---`;
+
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type Body = { tenant: string; messages: ChatMsg[] };
 
@@ -37,11 +82,13 @@ export async function POST(req: NextRequest) {
   const contextBlurb = await buildBusinessContext(body.tenant);
   const systemPrompt =
     `You are the equity-console assistant for the "${body.tenant}" business.\n\n` +
-    `Answer questions about this business's Kubernetes infrastructure using the\n` +
-    `LIVE STATE below. Be tight, specific, and cite exact names/namespaces.\n` +
-    `If asked something the context doesn't cover, say so plainly — do not\n` +
-    `invent app names or health statuses.\n\n` +
-    `--- LIVE STATE ---\n${contextBlurb}\n--- END LIVE STATE ---`;
+    `Answer questions about this business's Kubernetes infrastructure AND its\n` +
+    `event bus using the LIVE STATE below. Be tight, specific, and cite exact\n` +
+    `names/namespaces/subjects. If asked something the context doesn't cover,\n` +
+    `say so plainly — do not invent app names, health statuses, or event\n` +
+    `subjects.\n\n` +
+    `--- LIVE STATE ---\n${contextBlurb}\n--- END LIVE STATE ---\n\n` +
+    `${EVENTS_PRIMER}`;
 
   // Multi-turn: pass the full conversation as one text prompt. Simpler than
   // subprocess session persistence and lets us stay stateless server-side.

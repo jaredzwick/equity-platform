@@ -4,15 +4,17 @@
 import { listArgoApps, listCronJobs } from "@/lib/k8s";
 import { fetchNats } from "@/lib/nats";
 import { resolveTenant } from "@/lib/tenants";
+import { buildEventsContext } from "@/lib/business-context-events";
 
 export async function buildBusinessContext(tenantSlug: string): Promise<string> {
   const tenant = await resolveTenant(tenantSlug);
   if (!tenant) return `Unknown tenant: ${tenantSlug}`;
 
-  const [apps, crons, nats] = await Promise.all([
+  const [apps, crons, nats, eventsBlurb] = await Promise.all([
     listArgoApps(tenant.namespaces).catch(() => []),
     listCronJobs(tenant.namespaces).catch(() => []),
     fetchNats(),
+    buildEventsContext(tenantSlug).catch((e) => `## Event bus\n(context error: ${e instanceof Error ? e.message : String(e)})\n`),
   ]);
 
   const staleCutoff = Date.now() - 24 * 60 * 60 * 1000;
@@ -80,6 +82,9 @@ export async function buildBusinessContext(tenantSlug: string): Promise<string> 
     }
   }
   lines.push("");
+
+  lines.push(eventsBlurb);
+
   lines.push(`_Snapshot captured at ${new Date().toISOString()}._`);
 
   return lines.join("\n");

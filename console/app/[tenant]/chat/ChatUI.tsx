@@ -72,8 +72,8 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
     <div className="max-w-3xl flex flex-col h-[calc(100vh-180px)]">
       <div className="mb-3 flex items-center justify-between text-xs text-[color:var(--color-muted)]">
         <div>
-          Chatting with the {tenantName} agent · live cluster state re-fetched each turn ·
-          model <code className="text-[color:var(--color-fg)]">claude-opus-4-7</code>
+          Chatting with the {tenantName} agent · cluster + event bus state
+          re-fetched each turn · model <code className="text-[color:var(--color-fg)]">claude-opus-4-7</code>
         </div>
         {messages.length > 0 && (
           <button onClick={reset} className="hover:text-[color:var(--color-fg)]">
@@ -88,13 +88,15 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
       >
         {messages.length === 0 && (
           <div className="text-sm text-[color:var(--color-muted)]">
-            Ask about {tenantName}&apos;s infrastructure. The assistant sees live app health,
-            cron staleness, NATS state, and namespace list on each turn.
+            Ask about {tenantName}&apos;s infrastructure or its event bus. Every turn refreshes
+            live app health, cron staleness, NATS streams, recent event subjects, registered
+            consumers, and today&apos;s budget spend.
             <div className="mt-3 space-y-1 text-xs">
               <div>Try:</div>
-              <div>· &ldquo;What&apos;s deployed?&rdquo;</div>
+              <div>· &ldquo;What events are flowing right now?&rdquo;</div>
+              <div>· &ldquo;What consumers are registered on this stream?&rdquo;</div>
+              <div>· &ldquo;Scaffold an enrich that scores listing.deal.created events.&rdquo;</div>
               <div>· &ldquo;Are any cron jobs stale?&rdquo;</div>
-              <div>· &ldquo;Which apps aren&apos;t healthy?&rdquo;</div>
             </div>
           </div>
         )}
