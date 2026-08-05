@@ -164,7 +164,7 @@ export const TEMPLATES: readonly AppTemplate[] = [
     summary: "S3-compatible object storage you can run on your own cluster.",
     chartRepo: "https://charts.bitnami.com/bitnami",
     chartName: "minio",
-    chartVersion: "14.9.1",
+    chartVersion: "17.0.21",
     valuesYaml: MINIO_VALUES,
     docsSlug: "apps-choose-template",
   },
