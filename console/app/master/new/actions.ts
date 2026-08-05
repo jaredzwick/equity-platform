@@ -1,14 +1,16 @@
 "use server";
 
 import { core } from "@/lib/k8s";
-import { getFile, isConfigured, putFile } from "@/lib/github";
+import { canWriteToRepo, getFile, putFile } from "@/lib/github";
 import { discoverTenants } from "@/lib/tenants";
 import { ensureTenantEmailDb, isEmailDbConfigured } from "@/lib/email-db";
 import { ensureTenantStream } from "@/lib/nats-streams";
+import { parseBusinessInput } from "@/lib/business-url";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 const BOOTSTRAP_PATH = "bootstrap/00-namespaces.yaml";
+const BACK_TO = "/master/new";
 
 function isRedirect(e: unknown): boolean {
   return typeof e === "object" && e !== null && "digest" in e
@@ -16,12 +18,27 @@ function isRedirect(e: unknown): boolean {
     && (e as { digest: string }).digest.startsWith("NEXT_REDIRECT");
 }
 
-function validSlug(s: string): boolean {
-  return /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/.test(s);
+// Sanitize whatever internal errors bubble up so the UI never leaks URLs,
+// tokens, or JSON blobs. Full error is logged server-side; the user sees
+// a short, actionable message.
+function friendlyError(kind: "github" | "cluster", raw: unknown): string {
+  const msg = raw instanceof Error ? raw.message : String(raw);
+  console.error(`[master/new] ${kind} error:`, msg);
+  if (kind === "github") {
+    if (/403|not accessible|permission/i.test(msg)) {
+      return "GitHub backup couldn't write. Reinstall the equity-console GitHub app on your repo, or continue without git backup by disabling backup on the GitHub tab.";
+    }
+    if (/404|not found/i.test(msg)) {
+      return "GitHub backup couldn't find the platform repo's bootstrap file. Check that the backup target is a fork of the platform repo.";
+    }
+    return "GitHub backup write failed. Check the GitHub tab and try again.";
+  }
+  if (/forbidden|unauthorized/i.test(msg)) {
+    return "The console can't create namespaces in this cluster. Check RBAC on the console service account.";
+  }
+  return "Couldn't apply the namespace to the cluster. Try again in a moment.";
 }
 
-// Append a namespace block to the existing bootstrap yaml. The file is
-// a multi-document yaml stream (--- separated); we append one more doc.
 function renderNamespace(slug: string, name: string, ns: string): string {
   return `---
 apiVersion: v1
@@ -35,58 +52,60 @@ metadata:
 }
 
 export async function provisionBusinessFromForm(formData: FormData): Promise<void> {
-  const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
-  const name = String(formData.get("name") ?? "").trim();
-  const namespace = String(formData.get("namespace") ?? "").trim() || `${slug}-prod`;
+  const raw = String(formData.get("input") ?? "");
+  const parsed = parseBusinessInput(raw);
+  if (!parsed.ok) {
+    redirect(`${BACK_TO}?error=${encodeURIComponent(parsed.reason)}`);
+  }
+  const { slug, name, namespace } = parsed;
 
-  const backTo = "/master/new";
-
-  if (!validSlug(slug)) {
-    redirect(`${backTo}?error=${encodeURIComponent("Slug must be kebab-case (a-z, 0-9, dashes).")}`);
-  }
-  if (!name) {
-    redirect(`${backTo}?error=${encodeURIComponent("Display name required.")}`);
-  }
-  if (!validSlug(namespace)) {
-    redirect(`${backTo}?error=${encodeURIComponent("Namespace must be kebab-case.")}`);
-  }
-  if (!(await isConfigured())) {
-    redirect(`${backTo}?error=${encodeURIComponent("GITHUB_TOKEN + GITHUB_REPO must be set.")}`);
-  }
-
-  // Bail if slug already exists.
   const existing = await discoverTenants().catch(() => []);
   if (existing.some((t) => t.slug === slug)) {
-    redirect(`${backTo}?error=${encodeURIComponent(`A business with slug "${slug}" already exists.`)}`);
+    redirect(
+      `${BACK_TO}?error=${encodeURIComponent(
+        `A business with slug "${slug}" already exists. Pick a different URL or name.`,
+      )}`,
+    );
   }
 
-  // 1) Append to bootstrap/00-namespaces.yaml via GitHub Contents API.
-  //    This is the CANONICAL source. Git commit = versioned + revertable.
-  try {
-    const bootstrap = await getFile(BOOTSTRAP_PATH);
-    if (!bootstrap) {
-      redirect(`${backTo}?error=${encodeURIComponent(`Could not find ${BOOTSTRAP_PATH} in the repo.`)}`);
+  // Check whether GitHub-backed provisioning is available AND actually
+  // works. If it doesn't, silently fall back to cluster-only — the user
+  // shouldn't see the internal repo URL or a raw 403.
+  const commitToGit = await canWriteToRepo();
+
+  // Step 1 (optional): commit the namespace definition to git.
+  //   Only attempt if we've verified we can write. If it fails partway
+  //   through (network flake, ref moved), we log server-side and downgrade
+  //   to cluster-only — the tenant still lands, but without git backup.
+  //   We do not surface the raw GitHub URL or 403 to the user.
+  let gitCommitFailed = false;
+  if (commitToGit) {
+    try {
+      const bootstrap = await getFile(BOOTSTRAP_PATH);
+      if (!bootstrap) {
+        console.warn(`[master/new] ${BOOTSTRAP_PATH} not found in target repo; skipping git commit`);
+        gitCommitFailed = true;
+      } else {
+        const appended = bootstrap.content
+          + (bootstrap.content.endsWith("\n") ? "" : "\n")
+          + renderNamespace(slug, name, namespace);
+        await putFile({
+          path: BOOTSTRAP_PATH,
+          content: appended,
+          message: `feat(agency): add ${name} (${slug}) business`,
+          sha: bootstrap.sha,
+        });
+      }
+    } catch (e) {
+      if (isRedirect(e)) throw e;
+      console.error(`[master/new] git commit failed for ${slug}:`, e);
+      gitCommitFailed = true;
     }
-    const appended = bootstrap.content
-      + (bootstrap.content.endsWith("\n") ? "" : "\n")
-      + renderNamespace(slug, name, namespace);
-
-    await putFile({
-      path: BOOTSTRAP_PATH,
-      content: appended,
-      message: `feat(agency): add ${name} (${slug}) business`,
-      sha: bootstrap.sha,
-    });
-  } catch (e) {
-    if (isRedirect(e)) throw e;
-    const msg = e instanceof Error ? e.message : String(e);
-    redirect(`${backTo}?error=${encodeURIComponent(`GitHub write failed: ${msg}`)}`);
   }
 
-  // 2) Also apply the namespace directly to the current cluster so the
-  //    business shows up immediately (bootstrap yaml is not under ArgoCD
-  //    watch today — see roadmap). Idempotent: if namespace already
-  //    exists we swallow the 409.
+  // Step 2: apply the namespace to the live cluster. This is the "shows
+  //   up in the sidebar immediately" path. If this fails, the tenant is
+  //   effectively not created — surface a sanitized error.
   try {
     await core().createNamespace({
       body: {
@@ -103,15 +122,13 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
     if (isRedirect(e)) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     if (!msg.includes("already exists")) {
-      // Commit succeeded but apply failed. Still redirect to master —
-      // next `./local/up.sh` will pick it up from the commit.
-      redirect(`/master?warn=${encodeURIComponent(`Committed but cluster-apply failed: ${msg}. Re-run ./local/up.sh.`)}`);
+      redirect(
+        `${BACK_TO}?error=${encodeURIComponent(friendlyError("cluster", e))}`,
+      );
     }
   }
 
-  // 3) Auto-provision the tenant's email deliverability DB. Best-effort —
-  //    if it fails we still land the tenant; user can retry from the Email
-  //    tab (which also calls ensureTenantEmailDb on load).
+  // Step 3: best-effort email DB provisioning.
   if (isEmailDbConfigured()) {
     try {
       await ensureTenantEmailDb(slug);
@@ -120,22 +137,22 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
     }
   }
 
-  // 4) Auto-provision the tenant's NATS JetStream stream (events.{slug}.>).
-  //    Best-effort like #3, but if it fails we surface a warn=... so the
-  //    user knows and can retry from the /events empty-state button.
+  // Step 4: best-effort NATS stream provisioning. Surface a warn on the
+  //   tenant landing page if this failed (since it blocks the events tab).
   const streamResult = await ensureTenantStream(slug);
+  const warnings: string[] = [];
   if (!streamResult.ok) {
     console.error(`[nats] auto-provision failed for ${slug}:`, streamResult.error);
-    revalidatePath("/master");
-    revalidatePath("/", "layout");
-    redirect(
-      `/${slug}?created=1&warn=${encodeURIComponent(
-        `NATS stream not created: ${streamResult.error}. Retry from Events tab.`,
-      )}`,
-    );
+    warnings.push("NATS stream not created. Retry from the Events tab.");
+  }
+  if (commitToGit && gitCommitFailed) {
+    warnings.push("Cluster ready; git backup skipped. Retry from the GitHub tab.");
   }
 
   revalidatePath("/master");
-  revalidatePath("/", "layout"); // sidebar re-fetches
-  redirect(`/${slug}?created=1`);
+  revalidatePath("/", "layout");
+
+  const qs = new URLSearchParams({ created: "1" });
+  if (warnings.length) qs.set("warn", warnings.join(" "));
+  redirect(`/${slug}?${qs.toString()}`);
 }

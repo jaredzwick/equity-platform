@@ -266,3 +266,35 @@ export async function isAuthenticated(): Promise<boolean> {
     return false;
   }
 }
+
+// True if backup is configured AND the resolved token can actually write to
+// the resolved repo. Distinct from isConfigured(): env can point at a repo
+// the current token has no push scope on (common with the equity-console
+// GitHub App if it isn't installed on the target). Callers use this to
+// avoid offering "Commit + reconcile" UX that would fail with a 403 the
+// user can't act on.
+//
+// Implementation: GET /repos/{owner}/{name} returns a permissions block
+// (with `push`, `pull`, `admin`) when the requester has any access at all.
+// A truthy `permissions.push` is the reliable "can PUT contents" signal.
+// Fail-closed on any error — an unknown state is treated as "cannot write."
+export async function canWriteToRepo(): Promise<boolean> {
+  try {
+    if (!(await isConfigured())) return false;
+    const { owner, name } = await resolveTargetRepo();
+    const token = await authToken();
+    const res = await fetch(`${GH_API}/repos/${owner}/${name}`, {
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Authorization": `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { permissions?: { push?: boolean } };
+    return body.permissions?.push === true;
+  } catch {
+    return false;
+  }
+}
