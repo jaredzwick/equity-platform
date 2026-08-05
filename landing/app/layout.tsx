@@ -36,6 +36,17 @@ export const metadata: Metadata = {
     "holdco",
     "ETA",
     "microacquisition",
+    // Sell-side keywords (2026-08-04, /sell page). Distinct intent
+    // universe from the buyer keywords above — targets business owners
+    // searching "sell my business" and adjacent phrases.
+    "sell your business",
+    "list business for sale",
+    "sell online business",
+    "sell SaaS",
+    "sell ecommerce business",
+    "business for sale by owner",
+    "post business for sale",
+    "business broker alternative",
   ],
   authors: [{ name: "Pypes LLC" }],
   creator: "Pypes LLC",
@@ -59,7 +70,7 @@ export const metadata: Metadata = {
     siteName: "LamboApp",
     title: "LamboApp — Acquire cash-flowing SMBs (not meme stocks)",
     description:
-      "AI-screened businesses for sale, ranked by fit score. ~100 deals a day from 30+ brokers. Every listing gets a thesis + red flags. When lambo? Now.",
+      "Businesses for sale, read by Claude, ranked by fit. ~100 listings a day from 30+ brokers. Every deal gets a thesis + red flags. When lambo? Now.",
     url: SITE_URL,
     locale: "en_US",
   },
@@ -143,6 +154,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <nav className="hidden items-center gap-1 text-sm text-white/60 md:flex">
               <Link href="/#how" className="rounded-md px-3 py-1.5 hover:bg-white/5 hover:text-white">How it works</Link>
+              <Link href="/sell" className="rounded-md px-3 py-1.5 text-yellow-300/80 hover:bg-white/5 hover:text-yellow-200">Sell $7</Link>
               <Link href="/docs" className="rounded-md px-3 py-1.5 hover:bg-white/5 hover:text-white">Docs</Link>
               <a
                 href="https://github.com/jaredzwick/equity-platform"
@@ -170,12 +182,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   )}
                 </>
               ) : (
-                <a
-                  href="/api/auth/login"
+                <Link
+                  href="/signup"
                   className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-4 py-2 text-xs font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
                 >
-                  Sign in
-                </a>
+                  Sign up
+                </Link>
               )}
             </div>
           </div>
@@ -194,7 +206,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   </span>
                 </div>
                 <p className="mt-2 max-w-sm text-sm text-white/50">
-                  AI-screened businesses for sale. Ranked by fit. Reasoned. Ready to wire.
+                  Businesses for sale. Read by Claude. Ranked by fit. Ready to wire.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-8 text-sm md:grid-cols-3 md:gap-14">

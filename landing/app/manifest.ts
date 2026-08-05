@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "LamboApp — Acquire cash-flowing SMBs",
     short_name: "LamboApp",
     description:
-      "AI-screened businesses for sale, ranked by fit. ~100 deals a day from 30+ brokers.",
+      "Businesses for sale, read by Claude, ranked by fit. ~100 listings a day from 30+ brokers.",
     start_url: "/",
     display: "standalone",
     background_color: "#0a0a0a",

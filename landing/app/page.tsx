@@ -66,7 +66,13 @@ export default async function HomePage({ searchParams }: Props) {
                   <ArrowRight />
                 </Link>
               ) : (
-                <SignInButton label="Sign in with GitHub (unironically)" />
+                <Link
+                  href="/signup"
+                  className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg shadow-orange-500/40 transition hover:shadow-orange-500/70"
+                >
+                  Get on the list
+                  <ArrowRight />
+                </Link>
               )}
               <Link
                 href="/docs"
@@ -281,7 +287,7 @@ export default async function HomePage({ searchParams }: Props) {
               <span className="text-yellow-300">Now.</span>
             </h2>
             <p className="mt-4 max-w-xl text-white/70">
-              Sign in with GitHub. Fork the sourcer. Point it at your buy-box. Watch deals land in a Postgres table like a slot machine that only pays out cash-flowing SMBs.
+              Drop your name and number. We text you when the next scored deal lands. If you&rsquo;re a builder, fork the sourcer and point it at your buy-box — the whole platform is open source.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               {signedIn ? (
@@ -293,7 +299,13 @@ export default async function HomePage({ searchParams }: Props) {
                   <ArrowRight />
                 </Link>
               ) : (
-                <SignInButton label="Sign in with GitHub" />
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
+                >
+                  Get on the list
+                  <ArrowRight />
+                </Link>
               )}
               <a
                 href="https://github.com/jaredzwick/equity-platform"
