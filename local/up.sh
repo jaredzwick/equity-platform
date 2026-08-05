@@ -116,6 +116,7 @@ fi
 # reuse an already-running server. Logs stream to $CONSOLE_LOG_FILE.
 # `down.sh` is responsible for stopping the process on teardown.
 CONSOLE_DIR="$REPO_DIR/console"
+CONSOLE_PORT=3030
 CONSOLE_PID_FILE="$SCRIPT_DIR/.console.pid"
 CONSOLE_LOG_FILE="$SCRIPT_DIR/.console.log"
 
@@ -126,10 +127,44 @@ else
   echo "    node_modules present, skipping npm install"
 fi
 
-echo "==> Starting console UI (Next.js on :3030)"
-if [ -f "$CONSOLE_PID_FILE" ] && kill -0 "$(cat "$CONSOLE_PID_FILE")" 2>/dev/null; then
-  echo "    already running (PID $(cat "$CONSOLE_PID_FILE"))"
+echo "==> Starting console UI (Next.js on :$CONSOLE_PORT)"
+# Pre-flight: check who (if anyone) actually holds :$CONSOLE_PORT. The
+# .console.pid file records the npm wrapper, but `npm run dev` forks a
+# `next-server` child that outlives the wrapper — so a bare PID check can
+# lie (wrapper gone, child still serving). Test the port itself, then
+# reconcile against the PID file.
+port_holder=$(lsof -ti "tcp:$CONSOLE_PORT" 2>/dev/null || true)
+recorded_pid=""
+[ -f "$CONSOLE_PID_FILE" ] && recorded_pid=$(cat "$CONSOLE_PID_FILE" 2>/dev/null || echo "")
+
+if [ -n "$port_holder" ]; then
+  # Something's listening. Is it ours?
+  is_ours="no"
+  if [ -n "$recorded_pid" ] && kill -0 "$recorded_pid" 2>/dev/null; then
+    parent_of_holder=$(ps -o ppid= -p "$port_holder" 2>/dev/null | tr -d ' ' || echo "")
+    if [ "$port_holder" = "$recorded_pid" ] || [ "$parent_of_holder" = "$recorded_pid" ]; then
+      is_ours="yes"
+    fi
+  fi
+  if [ "$is_ours" = "yes" ]; then
+    echo "    already running (wrapper $recorded_pid, listener $port_holder)"
+  else
+    echo ""
+    echo "ERROR: :$CONSOLE_PORT is held by PID $port_holder, which we don't own."
+    echo "       Most likely an orphaned next-server from a previous run whose"
+    echo "       wrapper PID was killed but child survived."
+    echo ""
+    echo "       Fix:  ./local/down.sh"
+    echo "       Or:   lsof -i :$CONSOLE_PORT   then kill the offending PID."
+    echo ""
+    exit 1
+  fi
 else
+  # Port is free. Safe to blow away .next and spawn a fresh dev server.
+  # Clearing here (vs. in down.sh only) protects against Ctrl-C leaving
+  # .next in a half-compiled state that Next.js dev can't recover from.
+  rm -rf "$CONSOLE_DIR/.next"
+  echo "    cleared .next cache"
   (cd "$CONSOLE_DIR" && nohup npm run dev >"$CONSOLE_LOG_FILE" 2>&1 &
     echo $! >"$CONSOLE_PID_FILE")
   echo "    started (PID $(cat "$CONSOLE_PID_FILE")), logs: $CONSOLE_LOG_FILE"
