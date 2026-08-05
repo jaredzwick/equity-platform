@@ -66,6 +66,13 @@ type Props = {
   rows?: number;
   className?: string;
   disabled?: boolean;
+  // Progressive-disclosure help (v1 of the add-app UX pass):
+  //   tooltip  — short definition on hover of a "?" badge next to the label
+  //   help     — richer explanation revealed by a native <details> under the field
+  //   docsHref — appended as "Learn more →" inside the help block when set
+  tooltip?: string;
+  help?: React.ReactNode;
+  docsHref?: string;
 };
 
 // Client-side validated input. Shows an inline error when the value doesn't
@@ -84,6 +91,9 @@ export default function ValidatedInput({
   rows = 4,
   className = "",
   disabled,
+  tooltip,
+  help,
+  docsHref,
 }: Props) {
   const [value, setValue] = useState(defaultValue);
   const [touched, setTouched] = useState(false);
@@ -109,9 +119,19 @@ export default function ValidatedInput({
 
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-sm font-medium text-[color:var(--color-fg)]">
+      <span className="text-sm font-medium text-[color:var(--color-fg)] inline-flex items-center gap-1.5">
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-red-400">*</span>}
+        {tooltip && (
+          <span
+            className="help-badge"
+            title={tooltip}
+            aria-label={tooltip}
+            role="img"
+          >
+            ?
+          </span>
+        )}
       </span>
 
       {type === "textarea" ? (
@@ -130,6 +150,22 @@ export default function ValidatedInput({
       )}
       {!showError && !showEmptyError && hint && (
         <span className="text-[11px] text-[color:var(--color-muted)]">{hint}</span>
+      )}
+
+      {(help || docsHref) && (
+        <details className="help-panel">
+          <summary>What is this?</summary>
+          <div className="help-body">
+            {help}
+            {docsHref && (
+              <div className="help-docs">
+                <a href={docsHref} target="_blank" rel="noreferrer">
+                  Full docs →
+                </a>
+              </div>
+            )}
+          </div>
+        </details>
       )}
 
       <style jsx>{`
@@ -155,6 +191,65 @@ export default function ValidatedInput({
         .input:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+        }
+        .help-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 14px;
+          height: 14px;
+          border-radius: 9999px;
+          border: 1px solid var(--color-border);
+          background: rgba(255,255,255,0.04);
+          font-size: 10px;
+          font-weight: 600;
+          color: var(--color-muted);
+          cursor: help;
+        }
+        .help-badge:hover {
+          color: var(--color-fg);
+          border-color: var(--color-fg);
+        }
+        .help-panel {
+          margin-top: 0.25rem;
+          font-size: 11px;
+        }
+        .help-panel summary {
+          color: var(--color-muted);
+          cursor: pointer;
+          list-style: none;
+          user-select: none;
+          padding: 0.125rem 0;
+        }
+        .help-panel summary::before {
+          content: "▸ ";
+          display: inline-block;
+          transition: transform 0.15s ease;
+        }
+        .help-panel[open] summary::before {
+          transform: rotate(90deg);
+        }
+        .help-panel summary:hover {
+          color: var(--color-fg);
+        }
+        .help-body {
+          margin-top: 0.5rem;
+          padding: 0.625rem 0.75rem;
+          background: rgba(255,255,255,0.02);
+          border-left: 2px solid var(--color-border);
+          color: var(--color-muted);
+          line-height: 1.5;
+        }
+        .help-docs {
+          margin-top: 0.5rem;
+        }
+        .help-docs a {
+          color: rgb(52, 211, 153);
+          text-decoration: none;
+          font-weight: 500;
+        }
+        .help-docs a:hover {
+          text-decoration: underline;
         }
       `}</style>
     </label>

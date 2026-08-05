@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getFileSha, isConfigured, putFile, resolveTargetRepo } from "@/lib/github";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
+import { getChartAvailability } from "@/lib/helm-repo";
 
 // Form input for provisioning a new ArgoCD Application.
 export type NewAppInput = {
@@ -85,6 +86,22 @@ export async function provisionApp(input: NewAppInput): Promise<ActionResult> {
   const tenant = await resolveTenant(input.tenant);
   if (!tenant) return { ok: false, error: `Unknown tenant: ${input.tenant}` };
 
+  // Safety net: even if the picker/templated form pages missed the freshness
+  // check (JS disabled, direct POST, stale form left open through a version
+  // yank), refuse to commit files that would immediately break ArgoCD sync.
+  // Fail-open on availability=unknown so a flaky mirror doesn't block installs.
+  const availability = await getChartAvailability(
+    input.chartRepo,
+    input.chartName,
+    input.chartVersion,
+  ).catch(() => ({ status: "unknown" as const, reason: "check failed" }));
+  if (availability.status === "yanked" && "latestVersion" in availability) {
+    return {
+      ok: false,
+      error: `Chart ${input.chartName} v${input.chartVersion} is no longer published at ${input.chartRepo}. Latest available: v${availability.latestVersion}. Pick a different version.`,
+    };
+  }
+
   const appPath = `apps/${input.name}.yaml`;
   const valuesPath = `charts/${input.name}/values.yaml`;
 
@@ -142,10 +159,19 @@ export async function provisionAppFromForm(formData: FormData): Promise<void> {
     namespace: String(formData.get("namespace") ?? "").trim(),
     valuesYaml: String(formData.get("valuesYaml") ?? "").trim() || "# empty values\n",
   };
+  // Forms pass _returnTo so error redirects land back on the same form (the
+  // picker at /apps/new doesn't render a form, so a naive redirect would lose
+  // the user's inputs and drop them somewhere confusing). Safelist against the
+  // tenant's own /apps/new subtree to prevent open-redirect.
+  const returnToRaw = String(formData.get("_returnTo") ?? "");
+  const returnTo =
+    returnToRaw.startsWith(`/${input.tenant}/apps/new/`)
+      ? returnToRaw
+      : `/${input.tenant}/apps/new`;
   const result = await provisionApp(input);
   if (!result.ok) {
-    // Encode error into query string; the form page renders it.
-    redirect(`/${input.tenant}/apps/new?error=${encodeURIComponent(result.error)}`);
+    const sep = returnTo.includes("?") ? "&" : "?";
+    redirect(`${returnTo}${sep}error=${encodeURIComponent(result.error)}`);
   }
   redirect(`/${input.tenant}/apps?provisioned=${result.appName}&sha=${result.commitSha.slice(0, 7)}`);
 }
