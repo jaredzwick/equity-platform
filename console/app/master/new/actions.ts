@@ -4,6 +4,7 @@ import { core } from "@/lib/k8s";
 import { getFile, isConfigured, putFile } from "@/lib/github";
 import { discoverTenants } from "@/lib/tenants";
 import { ensureTenantEmailDb, isEmailDbConfigured } from "@/lib/email-db";
+import { ensureTenantStream } from "@/lib/nats-streams";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -117,6 +118,21 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
     } catch (e) {
       console.error(`[email-db] auto-provision failed for ${slug}:`, e);
     }
+  }
+
+  // 4) Auto-provision the tenant's NATS JetStream stream (events.{slug}.>).
+  //    Best-effort like #3, but if it fails we surface a warn=... so the
+  //    user knows and can retry from the /events empty-state button.
+  const streamResult = await ensureTenantStream(slug);
+  if (!streamResult.ok) {
+    console.error(`[nats] auto-provision failed for ${slug}:`, streamResult.error);
+    revalidatePath("/master");
+    revalidatePath("/", "layout");
+    redirect(
+      `/${slug}?created=1&warn=${encodeURIComponent(
+        `NATS stream not created: ${streamResult.error}. Retry from Events tab.`,
+      )}`,
+    );
   }
 
   revalidatePath("/master");
