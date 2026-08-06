@@ -13,62 +13,53 @@ type ErrorEntry = {
   actions?: Array<{ label: string; href: string; primary?: boolean }>;
 };
 
+// GitHub OAuth is currently disabled on lamboapp.com — every auth error
+// funnels users to the phone-signup form at /signup instead of retrying
+// the broken GH flow. The `oauth_*` / `token_*` / `csrf` codes still get
+// mapped so error links that were emailed or bookmarked before the swap
+// don't render as raw codes.
+const SIGNUP_ACTION = { label: "Get on the list", href: "/signup", primary: true } as const;
+
 const ERROR_MAP: Record<string, ErrorEntry> = {
   not_authenticated: {
-    title: "Please sign in first",
-    detail: "You need to sign in with GitHub before continuing to the onboarding steps.",
-    actions: [{ label: "Sign in with GitHub", href: "/api/auth/login", primary: true }],
+    title: "Get on the list first",
+    detail:
+      "Drop your name and phone number and we'll text you when the next scored deal lands. Takes 10 seconds.",
+    actions: [SIGNUP_ACTION],
   },
   csrf: {
     title: "Session expired",
     detail:
-      "Your sign-in link was too old, or your browser cleared cookies mid-flow. Start over — takes 10 seconds.",
-    actions: [{ label: "Sign in again", href: "/api/auth/login", primary: true }],
+      "Your sign-in link was too old, or your browser cleared cookies mid-flow. GitHub sign-in is offline right now — use the phone signup instead.",
+    actions: [SIGNUP_ACTION],
   },
   missing_code_or_state: {
     title: "Sign-in didn't complete",
-    detail: "The redirect from GitHub was missing required parameters. Try again.",
-    actions: [{ label: "Sign in again", href: "/api/auth/login", primary: true }],
+    detail:
+      "GitHub sign-in is temporarily disabled while we swap the auth flow. Sign up with your phone number instead — same result, no GitHub account required.",
+    actions: [SIGNUP_ACTION],
   },
   user_fetch_failed: {
-    title: "Couldn't read your GitHub profile",
+    title: "GitHub sign-in is offline",
     detail:
-      "GitHub authenticated you but rejected the follow-up profile read. Usually a transient hiccup — try again.",
-    actions: [{ label: "Try again", href: "/api/auth/login", primary: true }],
+      "We're mid-migration off GitHub OAuth. Use the phone signup below and we'll text you when the next deal drops.",
+    actions: [SIGNUP_ACTION],
   },
 };
 
-// Fallback entry for anything not explicitly mapped. Also handles namespaces
-// like `oauth_access_denied` (user hit "Cancel" on GitHub's authorize screen)
-// and `token_*` (Client Secret misconfigured).
 function fallback(code: string): ErrorEntry {
-  if (code.startsWith("oauth_access_denied") || code === "oauth_user_cancelled") {
+  if (code.startsWith("oauth_") || code.startsWith("token_")) {
     return {
-      title: "You cancelled the GitHub sign-in",
+      title: "GitHub sign-in is offline",
       detail:
-        "No worries — click below to try again. We only ask for the permissions listed on GitHub's consent screen.",
-      actions: [{ label: "Sign in with GitHub", href: "/api/auth/login", primary: true }],
-    };
-  }
-  if (code.startsWith("oauth_")) {
-    return {
-      title: "GitHub OAuth error",
-      detail: `GitHub reported: ${code.replace(/^oauth_/, "")}. Try again, or check the details below.`,
-      actions: [{ label: "Try again", href: "/api/auth/login", primary: true }],
-    };
-  }
-  if (code.startsWith("token_")) {
-    return {
-      title: "Couldn't finish sign-in",
-      detail:
-        "GitHub gave us a temporary code but exchanging it for an access token failed. Usually a platform-side config issue.",
-      actions: [{ label: "Try again", href: "/api/auth/login", primary: true }],
+        "We're moving off GitHub OAuth. Sign up with your phone number instead — takes 10 seconds and no GitHub account required.",
+      actions: [SIGNUP_ACTION],
     };
   }
   return {
     title: "Something went wrong",
-    detail: `Unexpected error: ${code}. Try again — if it persists, check the details below or contact support.`,
-    actions: [{ label: "Try again", href: "/api/auth/login", primary: true }],
+    detail: `Unexpected error: ${code}. Sign up with your phone number instead — GitHub OAuth is currently disabled.`,
+    actions: [SIGNUP_ACTION],
   };
 }
 

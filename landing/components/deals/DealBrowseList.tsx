@@ -6,8 +6,8 @@ import { DealCard } from "@/components/deals/DealCard";
 
 // DealBrowseList — client wrapper that owns the "saved" set + renders
 // each deal card. Saved state is localStorage-backed for both auth and
-// unauth (unauth users can build a wishlist before signing in — the set
-// survives the round-trip to /api/auth/login and back).
+// unauth (unauth users can build a wishlist before signing up — the set
+// survives the round-trip to /signup and back).
 //
 // Server-side persistence to buyer_deal_saved (or similar) is a v1 add
 // — for the MVP, "save" means "starred in your local browser" for

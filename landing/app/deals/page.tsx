@@ -148,21 +148,21 @@ export default async function DealsPage({
       {/* Pager */}
       <DealPagination page={page} pageSize={pageSize} total={total} />
 
-      {/* Sign-in nudge (only for unauth) */}
+      {/* Sign-up nudge (only for unauth) */}
       {!isAuth && deals.length > 0 && (
         <div className="mt-8 rounded-2xl border border-yellow-400/30 bg-yellow-400/[0.05] p-6 text-center backdrop-blur">
           <p className="text-lg font-semibold text-white">
-            Save deals + get a weekly buy-box digest
+            Get scored deals texted to you
           </p>
           <p className="mt-2 text-sm text-white/60">
-            Sign in with GitHub. We&rsquo;ll send you a weekly email of new
-            deals matching your industry, revenue, and multiple criteria.
+            Drop your name and number. We&rsquo;ll text you when a new listing
+            matches your industry, revenue, and multiple criteria.
           </p>
           <Link
-            href="/api/auth/login"
+            href="/signup"
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-5 py-2.5 text-sm font-bold text-black transition-transform hover:scale-[1.02]"
           >
-            Sign in with GitHub →
+            Get on the list →
           </Link>
         </div>
       )}

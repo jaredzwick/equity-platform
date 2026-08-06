@@ -40,13 +40,8 @@ export function DealCard({
 
   const handleSave = () => {
     if (!isAuth) {
-      // Unauth click → GitHub OAuth. Post-signup redirects back to /deals
-      // via the callback's has_buy_box branching. The "save" intent is
-      // lost on the round-trip (localStorage would preserve it but the
-      // wedge is small enough that "sign in first, then browse and save"
-      // is acceptable UX).
       startTransition(() => {
-        router.push(`/api/auth/login?redirect=${encodeURIComponent("/deals")}`);
+        router.push("/signup");
       });
       return;
     }
@@ -168,7 +163,7 @@ export function DealCard({
           }`}
         >
           <span aria-hidden>{isSaved ? "★" : "☆"}</span>
-          {isAuth ? (isSaved ? "Saved" : "Save") : "Sign in to save"}
+          {isAuth ? (isSaved ? "Saved" : "Save") : "Sign up to save"}
         </button>
       </div>
     </article>

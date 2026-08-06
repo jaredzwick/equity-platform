@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getSession } from "@/lib/session";
-import SignInButton from "@/components/SignInButton";
 import AnimatedSection from "@/components/AnimatedSection";
 import FeatureCard from "@/components/FeatureCard";
 import HowItWorks from "@/components/HowItWorks";

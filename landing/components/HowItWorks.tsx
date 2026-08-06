@@ -5,23 +5,23 @@ import { useEffect, useRef, useState } from "react";
 const steps = [
   {
     n: "01",
-    title: "Sign in with GitHub",
-    body: "One click. We use the standard GitHub App OAuth flow — no PATs, no secrets to manage.",
+    title: "Drop your name + number",
+    body: "Two fields, ten seconds. No GitHub account, no password, no waitlist. We text you when a deal worth reading lands.",
   },
   {
     n: "02",
-    title: "We fork the platform to your account",
-    body: "You get your own copy of the equity-platform repo. Every change lands as a commit on your fork.",
+    title: "The sourcer runs every 6 hours",
+    body: "30 broker feeds → one firehose. ~100 fresh listings per day, deduped, normalized, and queued for enrichment.",
   },
   {
     n: "03",
-    title: "Clone + ./local/up.sh",
-    body: "One script boots a local kind cluster with ArgoCD, NATS, and the multi-tenant console. ~3 minutes.",
+    title: "Claude scores every listing",
+    body: "Fit score 0–10, one-paragraph thesis, red flags surfaced (add-back cheese, revenue concentration, SDE-with-steps). The scams get flagged before you spend an hour reading.",
   },
   {
     n: "04",
-    title: "Create businesses from the console",
-    body: "Every action writes YAML to your fork. ArgoCD reconciles. Rollback is git revert.",
+    title: "You get a text when 8+ hits the feed",
+    body: "One glance, one decision: investigate, save for later, or pass. Sourcing is now something that happens while you sleep.",
   },
 ];
 
