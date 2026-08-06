@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { fetchDeals, parseDealFilters } from "@/lib/deals";
 import { getSession } from "@/lib/session";
 import { fmtCount } from "@/lib/format";
 import { DealFilters } from "@/components/deals/DealFilters";
 import { DealBrowseList } from "@/components/deals/DealBrowseList";
 import { DealPagination } from "@/components/deals/DealPagination";
+import {
+  INDUSTRIES,
+  PRICE_BUCKETS,
+  breadcrumbJsonLd,
+  itemListJsonLd,
+  SITE_URL,
+} from "@/lib/pseo";
+import Link from "next/link";
 
 // /deals — public search-engine over enriched business-for-sale
 // listings. Same architecture as careerjumpship/dashboard/jobs but
@@ -77,8 +84,26 @@ export default async function DealsPage({
   const page = response?.page ?? 1;
   const pageSize = response?.page_size ?? 20;
 
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "LamboApp", url: SITE_URL },
+    { name: "Deals", url: `${SITE_URL}/deals` },
+  ]);
+  const list = itemListJsonLd({
+    name: "Live business-for-sale deal flow",
+    url: `${SITE_URL}/deals`,
+    deals,
+  });
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 pt-24 md:px-6 md:py-12 md:pt-32">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(list) }}
+      />
       {/* Hero */}
       <div className="mb-8 space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/[0.06] px-3 py-1 text-xs text-yellow-200/90 backdrop-blur">
@@ -147,6 +172,44 @@ export default async function DealsPage({
 
       {/* Pager */}
       <DealPagination page={page} pageSize={pageSize} total={total} />
+
+      {/* Facet hubs — internal-linking to pSEO industry + price landing
+          pages. Curated (not combinatorial) per pSEO safety guidance:
+          hub-and-spoke, no combinatorial mesh. */}
+      <section className="mt-12 grid gap-8 border-t border-white/5 pt-10 md:grid-cols-2">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-white/50">
+            By industry
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {INDUSTRIES.map((i) => (
+              <Link
+                key={i.slug}
+                href={`/deals/industry/${i.slug}`}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/80 hover:border-yellow-400/40 hover:text-yellow-200"
+              >
+                {i.label} →
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-white/50">
+            By price
+          </h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {PRICE_BUCKETS.map((b) => (
+              <Link
+                key={b.slug}
+                href={`/deals/under/${b.slug}`}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/80 hover:border-yellow-400/40 hover:text-yellow-200"
+              >
+                Under ${b.slug} →
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Sign-up nudge (only for unauth) */}
       {!isAuth && deals.length > 0 && (

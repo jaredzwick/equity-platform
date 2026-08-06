@@ -106,39 +106,59 @@ export default async function DealPage({ params }: PageProps) {
     : fitScore >= 5 ? { label: "Investigate", color: "text-yellow-300", bg: "bg-yellow-500/10 border-yellow-500/30" }
     : { label: "Pass", color: "text-red-300", bg: "bg-red-500/10 border-red-500/30" };
 
-  const productJsonLd = {
+  // Article + BreadcrumbList schema (safe). We deliberately avoid
+  // Product / Offer / AggregateRating: per Google's structured-data
+  // guidelines (developers.google.com/search/docs/appearance/
+  // structured-data/product), marking third-party broker listings as
+  // our own Offer risks a "Spammy structured markup" manual action —
+  // we're an aggregator, not the seller of record. AggregateRating
+  // with ratingCount=1 (our internal fit score) is the same problem.
+  //
+  // Article schema is honest here: each deal page is our editorial
+  // summary of the listing (thesis + red flags + growth signals).
+  const articleJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Product",
-    name: deal.name,
+    "@type": "Article",
+    headline: deal.name,
     description: deal.seo_description || deal.thesis || deal.name,
     url: `${SITE_URL}/deal/${deal.slug}`,
-    offers: deal.asking_price
-      ? {
-          "@type": "Offer",
-          priceCurrency: deal.currency || "USD",
-          price: deal.asking_price,
-          availability: "https://schema.org/InStock",
-          url: deal.source_url,
-        }
+    datePublished: deal.published_at
+      ? new Date(deal.published_at * 1000).toISOString()
       : undefined,
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: fitScore,
-      bestRating: 10,
-      worstRating: 0,
-      ratingCount: 1,
+    author: { "@type": "Organization", name: "LamboApp" },
+    publisher: {
+      "@type": "Organization",
+      name: "LamboApp",
+      url: SITE_URL,
     },
+    mainEntityOfPage: `${SITE_URL}/deal/${deal.slug}`,
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "LamboApp", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Deals", item: `${SITE_URL}/deals` },
+      { "@type": "ListItem", position: 3, name: deal.name, item: `${SITE_URL}/deal/${deal.slug}` },
+    ],
   };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <article className="mx-auto max-w-4xl px-6 py-16 md:py-24">
         <nav className="mb-8 text-xs text-white/40">
           <Link href="/" className="hover:text-white">LamboApp</Link>
+          <span className="mx-2">/</span>
+          <Link href="/deals" className="hover:text-white">Deals</Link>
           <span className="mx-2">/</span>
           <span className="text-white/60">Deal</span>
         </nav>
