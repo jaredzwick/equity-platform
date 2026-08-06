@@ -100,22 +100,45 @@ async function loadAll(): Promise<Lead[]> {
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed) ? (parsed as Lead[]) : [];
   } catch (e) {
-    if (isNotFound(e)) return [];
+    if (isNotFound(e) || isReadOnly(e)) return [];
     throw e;
   }
 }
 
+// On Vercel the serverless filesystem is read-only outside /tmp, so any
+// write to <cwd>/.leads.json throws EROFS. The local cache is a
+// nice-to-have for dev-time inspection and single-instance dedup — the
+// pypes backend sync (see pypes-leads.ts) is the canonical persistence
+// path. So on read-only filesystems: log once and continue, don't turn
+// signup into a 500.
 async function saveAll(leads: Lead[]): Promise<void> {
   const target = storePath();
-  await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, JSON.stringify(leads, null, 2) + "\n", "utf8");
+  try {
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, JSON.stringify(leads, null, 2) + "\n", "utf8");
+  } catch (e) {
+    if (isReadOnly(e)) {
+      const code = (e as { code?: string }).code;
+      console.warn(
+        `[leads-store] local cache write skipped (${code}); relying on backend sync`,
+      );
+      return;
+    }
+    throw e;
+  }
 }
 
 function isNotFound(e: unknown): boolean {
-  return (
-    typeof e === "object" &&
-    e !== null &&
-    "code" in e &&
-    (e as { code: string }).code === "ENOENT"
-  );
+  return errCode(e) === "ENOENT";
+}
+
+function isReadOnly(e: unknown): boolean {
+  const code = errCode(e);
+  return code === "EROFS" || code === "EACCES" || code === "EPERM";
+}
+
+function errCode(e: unknown): string | undefined {
+  if (typeof e !== "object" || e === null || !("code" in e)) return undefined;
+  const c = (e as { code: unknown }).code;
+  return typeof c === "string" ? c : undefined;
 }

@@ -40,9 +40,18 @@ export default function SignupForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, phone, source }),
       });
-      const body = (await res.json()) as { ok: boolean; error?: string };
-      if (!body.ok) {
-        setError(body.error ?? `HTTP ${res.status}`);
+      // The API returns JSON on both success and validation errors, but
+      // an infra-level 500 can come back with an empty body. Guard the
+      // parse so the form shows a friendly message instead of throwing
+      // "Unexpected end of JSON input".
+      const body = (await res.json().catch(() => null)) as
+        | { ok: boolean; error?: string }
+        | null;
+      if (!res.ok || !body?.ok) {
+        setError(
+          body?.error ??
+            `We couldn't submit that (HTTP ${res.status}). Try again in a moment.`,
+        );
         return;
       }
       router.push("/signup/thanks");
