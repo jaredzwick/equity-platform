@@ -142,6 +142,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
+        {/* StartupBar widget — 36px directory bar pinned to the top.
+            Auto-shifts fixed/sticky headers; if the site header sits under
+            it, add `top: 36px` to the header rule as a manual fallback. */}
+        <script
+          async
+          src="https://startupbar.co/widget/loader.js"
+          data-startup-id="f8409de5-2f65-41c2-b0ad-7314e93f13fb"
+        />
       </head>
       <body className="min-h-screen flex flex-col overflow-x-hidden">
         <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-black/40 backdrop-blur-xl supports-[backdrop-filter]:bg-black/30">
@@ -153,7 +161,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </span>
             </Link>
             <nav className="hidden items-center gap-1 text-sm text-white/60 md:flex">
-              <Link href="/#how" className="rounded-md px-3 py-1.5 hover:bg-white/5 hover:text-white">How it works</Link>
+              <Link href="/deals" className="rounded-md px-3 py-1.5 hover:bg-white/5 hover:text-white">Deals</Link>
+              <Link href="/marketplaces" className="rounded-md px-3 py-1.5 hover:bg-white/5 hover:text-white">Marketplaces</Link>
               <Link href="/sell" className="rounded-md px-3 py-1.5 text-yellow-300/80 hover:bg-white/5 hover:text-yellow-200">Sell $7</Link>
               <Link href="/docs" className="rounded-md px-3 py-1.5 hover:bg-white/5 hover:text-white">Docs</Link>
               <a
@@ -209,12 +218,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   Businesses for sale. Read by Claude. Ranked by fit. Ready to wire.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-8 text-sm md:grid-cols-3 md:gap-14">
+              <div className="grid grid-cols-2 gap-8 text-sm md:grid-cols-4 md:gap-14">
                 <FooterCol
                   title="Product"
                   links={[
+                    ["Deal flow", "/deals"],
+                    ["Marketplaces", "/marketplaces"],
                     ["How it works", "/#how"],
+                    ["Sell your business", "/sell"],
                     ["Docs", "/docs"],
+                    ["RSS feed", "/feed"],
+                  ]}
+                />
+                <FooterCol
+                  title="Compare"
+                  links={[
+                    ["vs BizBuySell", "/compare/bizbuysell"],
+                    ["vs Flippa", "/compare/flippa"],
+                    ["vs Empire Flippers", "/compare/empire-flippers"],
+                    ["vs Acquire.com", "/compare/acquire"],
+                    ["vs Quiet Light", "/compare/quiet-light"],
                   ]}
                 />
                 <FooterCol
