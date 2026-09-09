@@ -228,7 +228,7 @@ export default async function DealPage({ params }: PageProps) {
 
         {deal.seo_body_html && (
           <section
-            className="prose prose-invert mt-20 max-w-none prose-p:my-5 prose-p:text-white/80 prose-p:leading-relaxed prose-strong:text-white"
+            className="mt-20 max-w-none text-white/80 [&_p]:mb-6 [&_p]:text-[15px] [&_p]:leading-[1.75] md:[&_p]:text-base [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-white [&_ul]:mb-6 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_li]:leading-relaxed [&_h2]:mt-10 [&_h2]:mb-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-white [&_a]:text-yellow-300 [&_a]:underline [&_a]:decoration-yellow-500/40 [&_a]:underline-offset-2 hover:[&_a]:text-yellow-200"
             dangerouslySetInnerHTML={{ __html: deal.seo_body_html }}
           />
         )}
