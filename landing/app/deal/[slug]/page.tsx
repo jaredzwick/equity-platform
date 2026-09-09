@@ -228,7 +228,7 @@ export default async function DealPage({ params }: PageProps) {
 
         {deal.seo_body_html && (
           <section
-            className="prose prose-invert mt-12 max-w-none prose-p:text-white/80 prose-p:leading-relaxed prose-strong:text-white"
+            className="prose prose-invert mt-20 max-w-none prose-p:my-5 prose-p:text-white/80 prose-p:leading-relaxed prose-strong:text-white"
             dangerouslySetInnerHTML={{ __html: deal.seo_body_html }}
           />
         )}

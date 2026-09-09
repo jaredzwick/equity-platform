@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitLead, normalizePhone } from "@/lib/leads-store";
 import { syncLeadInBackground } from "@/lib/pypes-leads";
-import { sendGuideInBackground } from "@/lib/guide-mailer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,10 +9,15 @@ export const dynamic = "force-dynamic";
 // Idempotent on phone; dedup returns { ok: true, created: false }.
 //
 // On a successful CREATE (not dedup), fire-and-forget a proxy call to
-// the pypes backend, which owns Postgres storage + GHL upsert +
-// retry queue (matching careerjumpship_lead_capture.go's pattern).
-// The response doesn't wait on the sync — signup UX must not block on
-// backend availability.
+// the pypes backend, which owns Postgres storage + GHL upsert + PDF
+// playbook delivery for /join lead-magnet opt-ins. The response doesn't
+// wait on the sync — signup UX must not block on backend availability.
+//
+// The /join lead-magnet PDF send lives in pypes (lamboapp_join_delivery.go),
+// not here. Landing forwards the email in the sync payload and the pypes
+// handler dispatches a fire-and-forget goroutine when source starts with
+// "join-guide" and email is present. Single Resend surface, single key
+// rotation. See CEO plan 2026-09-08.
 //
 // Not rate-limited today — MVP relies on the front-end form being the
 // only public consumer. If we start seeing abuse in server logs, add
@@ -39,12 +43,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const result = await submitLead({ name, phone, source });
 
-    // Only sync on brand-new leads. Dedup collisions (created=false) mean
-    // the contact already exists — GHL's upsert would be a no-op too, but
-    // skipping the network call keeps the sync signal clean.
-    if (result.ok && result.created) {
+    // Sync on brand-new leads (created=true) so pypes owns Postgres + GHL
+    // upsert. Also sync on /join-guide dedup replays so the pypes handler
+    // can re-dispatch the fire-and-forget playbook PDF — a resubmit is
+    // usually the user recovering from a lost first email, and the guide
+    // re-send costs less than a support ticket. For every other funnel
+    // (created=false + non-join-guide source), skip the sync call since
+    // GHL's upsert would be a no-op anyway and we prefer clean sync logs.
+    if (result.ok) {
       const normalized = normalizePhone(phone);
-      if (normalized) {
+      const isJoinGuide =
+        typeof source === "string" && source.startsWith("join-guide");
+      if (normalized && (result.created || isJoinGuide)) {
         syncLeadInBackground(
           {
             name: name.trim(),
@@ -53,19 +63,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             createdAt: new Date().toISOString(),
           },
           // Email piggybacks on the sync payload but isn't stored on the
-          // local Lead audit record. GHL gets it via ContactInput.Email.
+          // local Lead audit record. GHL gets it via ContactInput.Email
+          // and the pypes handler uses it to trigger the /join playbook PDF.
           email && /.+@.+\..+/.test(email) ? { email } : undefined,
         );
       }
-    }
-
-    // /join lead-magnet: fire the PDF email on every successful submit
-    // (including dedup replays — a user re-submitting probably lost the
-    // first email). Fire-and-forget so signup UX doesn't wait on Resend.
-    const isJoinGuide =
-      typeof source === "string" && source.startsWith("join-guide");
-    if (result.ok && isJoinGuide && email && /.+@.+\..+/.test(email)) {
-      sendGuideInBackground({ to: email, name: name.trim() });
     }
 
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
