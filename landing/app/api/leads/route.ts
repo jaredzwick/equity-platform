@@ -45,12 +45,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (result.ok && result.created) {
       const normalized = normalizePhone(phone);
       if (normalized) {
-        syncLeadInBackground({
-          name: name.trim(),
-          phone: normalized,
-          source,
-          createdAt: new Date().toISOString(),
-        });
+        syncLeadInBackground(
+          {
+            name: name.trim(),
+            phone: normalized,
+            source,
+            createdAt: new Date().toISOString(),
+          },
+          // Email piggybacks on the sync payload but isn't stored on the
+          // local Lead audit record. GHL gets it via ContactInput.Email.
+          email && /.+@.+\..+/.test(email) ? { email } : undefined,
+        );
       }
     }
 

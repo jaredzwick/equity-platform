@@ -120,4 +120,42 @@ describe("syncLeadToPypes", () => {
       source: "signup-page",
     });
   });
+
+  it("includes email in the body when the funnel provided one", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ lead_id: "x" }),
+    } as Response);
+    await syncLeadToPypes(lead, { email: "jane.doe@example.com" });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body).toEqual({
+      name: "Jane Doe",
+      phone_e164: "+12125550199",
+      source: "signup-page",
+      email: "jane.doe@example.com",
+    });
+  });
+
+  it("omits email when extras.email is undefined or blank", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ lead_id: "x" }),
+    } as Response);
+    await syncLeadToPypes(lead, { email: "   " });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body).not.toHaveProperty("email");
+  });
+
+  it("trims surrounding whitespace on email before forwarding", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ lead_id: "x" }),
+    } as Response);
+    await syncLeadToPypes(lead, { email: "  buyer@example.com  " });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.email).toBe("buyer@example.com");
+  });
 });

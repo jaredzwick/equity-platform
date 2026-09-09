@@ -236,20 +236,19 @@ export default async function DealPage({ params }: PageProps) {
         <section className="mt-16 rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-500/15 via-orange-500/10 to-red-500/10 p-8">
           <h2 className="text-2xl font-semibold text-white">Ready to make a move?</h2>
           <p className="mt-2 text-white/70">
-            LamboApp surfaces the deal. The broker holds the intake. Do your own diligence —
-            our fit score is a starting point, not a green light.
+            Fit score is a starting point, not a green light. The 90-day playbook is the
+            next step — credit stack, financing sources, and the exact cadence to get from
+            "interesting listing" to signed LOI without wiring on vibes.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href={deal.source_url}
-              target="_blank"
-              rel="noreferrer nofollow"
+            <Link
+              href="/join"
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
             >
-              View listing on {hostFromUrl(deal.source_url)} →
-            </a>
+              Get the free 90-day playbook →
+            </Link>
             <Link
-              href="/"
+              href="/deals"
               className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
             >
               ← See more deals
@@ -295,9 +294,4 @@ function money(n: number | null | undefined): string {
 
 function humanize(s: string): string {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function hostFromUrl(url: string): string {
-  try { return new URL(url).host.replace(/^www\./, ""); }
-  catch { return "broker"; }
 }

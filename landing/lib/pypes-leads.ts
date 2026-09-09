@@ -13,10 +13,16 @@ import "server-only";
 // Required backend endpoint (Go, in pypes/infra/server):
 //   POST /lamboapp/leads/capture
 //   Headers: Authorization: Bearer <LAMBOAPP_BACKEND_BEARER>
-//   Body: { name, phone_e164, source }
+//   Body: { name, phone_e164, email?, source }
 //   Returns: { lead_id, ghl_contact_id, ghl_status }
 //   Pattern reference: careerjumpship_lead_capture.go (email-based,
 //   same shape modulo the phone-first key).
+//
+// email is optional — only sent by funnels that ask for it (currently
+// the /join lead-magnet, which needs an inbox for the PDF delivery).
+// It's not persisted to the local .leads.json audit file — that stays
+// name+phone only. Email lives in Resend (send log) + GHL (CRM), which
+// are the two systems that actually need it.
 //
 // If the endpoint is 404 (not deployed yet), we log a clear "backend
 // endpoint missing" warning and continue — the local .leads.json
@@ -34,8 +40,16 @@ export type PypesLeadSyncStatus =
 
 // Fire-and-forget wrapper. Safe to `void` from the API route. Logs
 // every terminal outcome to server console/Vercel logs but never throws.
-export function syncLeadInBackground(lead: Lead): void {
-  syncLeadToPypes(lead).then(
+//
+// extras carries per-funnel optional fields that don't belong on the
+// Lead audit record (email today, others later). Keeps the local
+// .leads.json shape stable while still letting the backend + GHL sync
+// receive the extra fields when the funnel provides them.
+export function syncLeadInBackground(
+  lead: Lead,
+  extras?: { email?: string },
+): void {
+  syncLeadToPypes(lead, extras).then(
     (result) => {
       switch (result.status) {
         case "disabled":
@@ -63,7 +77,10 @@ export function syncLeadInBackground(lead: Lead): void {
 }
 
 // Awaitable version — for tests and callers that need the result.
-export async function syncLeadToPypes(lead: Lead): Promise<PypesLeadSyncStatus> {
+export async function syncLeadToPypes(
+  lead: Lead,
+  extras?: { email?: string },
+): Promise<PypesLeadSyncStatus> {
   let bearer: string;
   try {
     bearer = lamboappBackendBearer();
@@ -88,6 +105,11 @@ export async function syncLeadToPypes(lead: Lead): Promise<PypesLeadSyncStatus> 
         name: lead.name,
         phone_e164: lead.phone,
         source: lead.source ?? "lamboapp-landing",
+        // Only send email when provided. The backend accepts omit-empty;
+        // sending "" trips the 422 email-must-be-valid validator.
+        ...(extras?.email && extras.email.trim()
+          ? { email: extras.email.trim() }
+          : {}),
       }),
     });
   } catch (e) {
