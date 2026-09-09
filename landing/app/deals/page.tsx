@@ -105,7 +105,7 @@ export default async function DealsPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(list) }}
       />
       {/* Hero */}
-      <div className="mb-8 space-y-3">
+      <div className="mb-12 space-y-5 md:space-y-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/[0.06] px-3 py-1 text-xs text-yellow-200/90 backdrop-blur">
           <span
             aria-hidden
@@ -135,7 +135,7 @@ export default async function DealsPage({
             </>
           )}
         </h1>
-        <p className="max-w-2xl text-sm text-white/60 md:text-base">
+        <p className="max-w-2xl text-sm leading-relaxed text-white/60 md:text-base md:leading-relaxed">
           Every deal enriched by AI: SDE multiple, red flags, growth signals,
           and a fit score you can trust. Sign in to save deals to your buy-box
           and get a weekly digest of new matches.
