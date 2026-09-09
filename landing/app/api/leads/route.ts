@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitLead, normalizePhone } from "@/lib/leads-store";
 import { syncLeadInBackground } from "@/lib/pypes-leads";
+import { sendGuideInBackground } from "@/lib/guide-mailer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +20,12 @@ export const dynamic = "force-dynamic";
 // an IP-based token bucket here (per-IP 5/min is usually enough).
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    let body: { name?: unknown; phone?: unknown; source?: unknown };
+    let body: {
+      name?: unknown;
+      phone?: unknown;
+      email?: unknown;
+      source?: unknown;
+    };
     try {
       body = (await req.json()) as typeof body;
     } catch {
@@ -28,6 +34,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const name = typeof body.name === "string" ? body.name : "";
     const phone = typeof body.phone === "string" ? body.phone : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
     const source = typeof body.source === "string" ? body.source : undefined;
 
     const result = await submitLead({ name, phone, source });
@@ -45,6 +52,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           createdAt: new Date().toISOString(),
         });
       }
+    }
+
+    // /join lead-magnet: fire the PDF email on every successful submit
+    // (including dedup replays — a user re-submitting probably lost the
+    // first email). Fire-and-forget so signup UX doesn't wait on Resend.
+    const isJoinGuide =
+      typeof source === "string" && source.startsWith("join-guide");
+    if (result.ok && isJoinGuide && email && /.+@.+\..+/.test(email)) {
+      sendGuideInBackground({ to: email, name: name.trim() });
     }
 
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
