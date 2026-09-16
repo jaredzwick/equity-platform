@@ -31,11 +31,16 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
-  # The NATS Helm chart renders `creationTimestamp: null` inside the
-  # StatefulSet's volumeClaimTemplates[].metadata. The Kube API strips
-  # nulls on write, so without this ignore rule the app is perma-OutOfSync.
+  # The NATS Helm chart renders full PVC objects (apiVersion, kind,
+  # creationTimestamp: null, empty status) inside the StatefulSet's
+  # volumeClaimTemplates. The Kube API server strips apiVersion/kind
+  # and normalizes null/empty fields on write, so without these ignore
+  # rules the app is perma-OutOfSync.
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
       jqPathExpressions:
+        - .spec.volumeClaimTemplates[]?.apiVersion
+        - .spec.volumeClaimTemplates[]?.kind
         - .spec.volumeClaimTemplates[]?.metadata.creationTimestamp
+        - .spec.volumeClaimTemplates[]?.status
