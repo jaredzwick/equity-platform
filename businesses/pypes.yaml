@@ -1,0 +1,11 @@
+# Business profile — declarative source of truth for this tenant.
+# Edited via console/[tenant]/profile OR by hand + commit.
+# Schema: console/lib/business-profile-schema.ts
+
+identity:
+  legal_name: Pypes Corp
+  display_name: Pypes
+brand:
+  primary_color: '#000000'
+  secondary_color: '#000000'
+  accent_color: '#000000'
