@@ -2,6 +2,7 @@ import { loadAll as yamlLoadAll } from "js-yaml";
 import { core } from "@/lib/k8s";
 import { getFile } from "@/lib/github";
 import { ensureRunnerSecret } from "@/lib/runner-secret";
+import { ensureTenantStream } from "@/lib/nats-streams";
 
 // A tenant (business) is discovered by scanning cluster namespaces for the
 // label `equity.io/tenant`. The label value is the slug used in URLs; the
@@ -152,6 +153,16 @@ export async function reconcileTenantsFromRepo(): Promise<ReconcileResult> {
       if (!secret.ok) {
         console.error(`[runner-secret] auto-seed failed for ${tenant.slug}/${ns}:`, secret.reason);
       }
+    }
+    // Best-effort: provision the tenant's NATS JetStream so cron-completion
+    // events have somewhere to land the first time a cron fires. Called
+    // once per tenant (not per-namespace — streams are tenant-scoped).
+    // Runner-side self-heal in runners/claude-runner/runner.mjs covers
+    // this path too as belt-and-suspenders. Non-fatal here — the
+    // /events tab's "Provision stream" button is the manual retry.
+    const streamResult = await ensureTenantStream(tenant.slug);
+    if (!streamResult.ok) {
+      console.error(`[nats-stream] auto-provision failed for ${tenant.slug}:`, streamResult.error);
     }
     if (!hadError) result.created.push(tenant.slug);
   }
