@@ -196,7 +196,7 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
               <div key={i} className="flex justify-start pl-6">
                 <div className="max-w-[85%] px-4 py-2.5 rounded bg-amber-950/20 border border-amber-900/40">
                   <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-amber-300 mb-1">
-                    <span>🧪 Dry run</span>
+                    <span>🧪 Play output</span>
                     {dryRunBusy === m.forMessageIndex && (
                       <button
                         onClick={stopDryRun}
@@ -241,10 +241,10 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
                     <button
                       onClick={() => dryRun(i, proposal.prompt!)}
                       disabled={!canPlay || dryRunBusy !== null}
-                      title="Run the prompt now (no commit, no schedule) so you can iterate on it"
+                      title="Run the prompt now — no commit, no schedule — so you can iterate on it"
                       className="text-xs px-3 py-1.5 rounded bg-amber-600/80 text-white hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                     >
-                      ▶ Play (dry run)
+                      ▶ Play
                     </button>
                   )}
                   <button

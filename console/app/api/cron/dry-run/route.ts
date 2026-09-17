@@ -20,6 +20,7 @@
 
 import { spawn } from "node:child_process";
 import { NextRequest } from "next/server";
+import { MCP_CONFIG_EMPTY } from "@/lib/mcp-configs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,9 +62,12 @@ export async function POST(req: NextRequest) {
       "--print",
       "--model", model,
       // Explicitly empty MCP config: dry-runs must be side-effect-free.
-      // Passing an empty-object inline JSON works with claude's
-      // --mcp-config flag (accepts JSON strings, not just file paths).
-      "--mcp-config", "{}",
+      // The value MUST include an mcpServers key even when empty —
+      // `{}` alone fails the CLI's schema validation with:
+      //   "mcpServers: Does not adhere to MCP server configuration schema"
+      // The constant + validator in @/lib/mcp-configs is the source of
+      // truth; a lint test guards against drift.
+      "--mcp-config", MCP_CONFIG_EMPTY,
       "--strict-mcp-config",
     ],
     {
