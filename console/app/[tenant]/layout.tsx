@@ -18,16 +18,14 @@ export default async function TenantLayout({ children, params }: Props) {
   const logoUrl = (profile?.brand?.logo_url as string | undefined) ?? null;
   const displayName = (profile?.identity?.display_name as string | undefined) ?? tenant.name;
 
+  // Trimmed nav — Overview / Logo / Apps / Email / History are hidden but
+  // still reachable by direct URL (bookmarks, deep links). Profile is the
+  // new landing surface for a business; /[tenant] redirects to it.
   const tabs = [
-    { href: `/${slug}`, label: "Overview" },
     { href: `/${slug}/profile`, label: "Profile" },
-    { href: `/${slug}/logo`, label: "Logo" },
-    { href: `/${slug}/apps`, label: "Apps" },
     { href: `/${slug}/cron`, label: "Cron" },
-    { href: `/${slug}/email`, label: "Email" },
     { href: `/${slug}/events`, label: "Events" },
     { href: `/${slug}/chat`, label: "Chat" },
-    { href: `/${slug}/history`, label: "History" },
   ];
 
   return (

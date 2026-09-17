@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ModelPicker, useChatModel } from "@/components/ModelPicker";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Props = { tenantSlug: string; tenantName: string };
@@ -9,6 +10,7 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const { model, setModel } = useChatModel();
   const listRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -33,7 +35,7 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenant: tenantSlug, messages: history }),
+        body: JSON.stringify({ tenant: tenantSlug, messages: history, model }),
         signal: ctrl.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
@@ -72,14 +74,16 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
     <div className="max-w-3xl flex flex-col h-[calc(100vh-180px)]">
       <div className="mb-3 flex items-center justify-between text-xs text-[color:var(--color-muted)]">
         <div>
-          Chatting with the {tenantName} agent · cluster + event bus state
-          re-fetched each turn · model <code className="text-[color:var(--color-fg)]">claude-opus-4-7</code>
+          Chatting with the {tenantName} agent · cluster + event bus state re-fetched each turn
         </div>
-        {messages.length > 0 && (
-          <button onClick={reset} className="hover:text-[color:var(--color-fg)]">
-            Reset
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <ModelPicker value={model} onChange={setModel} disabled={busy} />
+          {messages.length > 0 && (
+            <button onClick={reset} className="hover:text-[color:var(--color-fg)]">
+              Reset
+            </button>
+          )}
+        </div>
       </div>
 
       <div
@@ -88,15 +92,16 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
       >
         {messages.length === 0 && (
           <div className="text-sm text-[color:var(--color-muted)]">
-            Ask about {tenantName}&apos;s infrastructure or its event bus. Every turn refreshes
-            live app health, cron staleness, NATS streams, recent event subjects, registered
-            consumers, and today&apos;s budget spend.
+            I&apos;m your copilot for {tenantName} — strategy, marketing, sales, customer discovery,
+            AND the live cluster + event bus behind it. Every turn refreshes app health, cron
+            staleness, NATS streams, recent event subjects, and today&apos;s budget spend.
             <div className="mt-3 space-y-1 text-xs">
               <div>Try:</div>
-              <div>· &ldquo;What events are flowing right now?&rdquo;</div>
-              <div>· &ldquo;What consumers are registered on this stream?&rdquo;</div>
+              <div>· &ldquo;Who is the ideal customer for {tenantName} and why?&rdquo;</div>
+              <div>· &ldquo;Draft a cold-outbound message for {tenantName}&apos;s top segment.&rdquo;</div>
+              <div>· &ldquo;What growth experiment should I run this week?&rdquo;</div>
+              <div>· &ldquo;What events are flowing right now? Anything stale?&rdquo;</div>
               <div>· &ldquo;Scaffold an enrich that scores listing.deal.created events.&rdquo;</div>
-              <div>· &ldquo;Are any cron jobs stale?&rdquo;</div>
             </div>
           </div>
         )}

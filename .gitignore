@@ -8,6 +8,9 @@ kubeconfig
 *.log
 local/.console.pid
 local/.config.json
+local/.state/
+local/.nats-pf.pid
+node_modules/
 
 # Editor / OS
 .DS_Store

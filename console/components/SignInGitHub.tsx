@@ -1,6 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+// Agency-scoped subroutes. The chat-first deck at /master intentionally
+// hides MasterTabs, so this popover is the primary way to reach them.
+// Keep the sidebar/gear menu as the single source of truth for this list
+// so we don't drift from the MasterTabs array in app/master/MasterTabs.tsx.
+const AGENCY_MENU = [
+  { href: "/master/settings", label: "Agency settings" },
+  { href: "/master/github", label: "GitHub" },
+  { href: "/master/listings", label: "Seller listings" },
+  { href: "/master/aggregate", label: "Aggregate observability" },
+  { href: "/master/email", label: "Email" },
+] as const;
 
 type InstallStatus =
   | { checking: true }
@@ -10,6 +24,9 @@ type InstallStatus =
 
 function AuthedChip({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [install, setInstall] = useState<InstallStatus>({ checking: true });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     fetch("/api/auth/install-status")
@@ -38,22 +55,89 @@ function AuthedChip({ user, onSignOut }: { user: User; onSignOut: () => void }) 
       );
   }, []);
 
+  // Click-outside dismissal. Scoped to `mousedown` so opening the menu
+  // and clicking a link inside it doesn't fire close before navigation.
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [menuOpen]);
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5 group">
+    <div ref={rootRef} className="relative space-y-2">
+      {menuOpen && (
+        <div className="absolute bottom-full left-0 right-0 mb-2 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] shadow-lg overflow-hidden">
+          <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-[color:var(--color-muted)] border-b border-[color:var(--color-border)]">
+            Agency
+          </div>
+          <nav className="py-1">
+            {AGENCY_MENU.map((item) => {
+              const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={
+                    "block px-3 py-1.5 text-xs hover:bg-white/5 " +
+                    (active
+                      ? "text-[color:var(--color-fg)] bg-white/[0.04] border-l-2 border-emerald-500"
+                      : "text-[color:var(--color-fg)]")
+                  }
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="border-t border-[color:var(--color-border)] py-1">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onSignOut();
+              }}
+              className="w-full text-left px-3 py-1.5 text-xs text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)] hover:bg-white/5"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white/5"
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+      >
         {user.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.avatarUrl} alt={user.login} className="w-5 h-5 rounded-full" />
+          <img src={user.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
         ) : null}
-        <span className="text-xs flex-1 truncate">{user.login}</span>
-        <button
-          onClick={onSignOut}
-          className="text-[10px] text-[color:var(--color-muted)] group-hover:text-[color:var(--color-fg)]"
-          title="Sign out"
+        <span className="text-xs flex-1 truncate text-left">{user.login}</span>
+        <span
+          className={
+            "text-[10px] text-[color:var(--color-muted)] transition-transform " +
+            (menuOpen ? "rotate-180" : "")
+          }
+          aria-hidden
         >
-          ✕
-        </button>
-      </div>
+          ▾
+        </span>
+      </button>
 
       {!install.checking && "installed" in install && !install.installed && (
         <a

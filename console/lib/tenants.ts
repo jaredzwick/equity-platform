@@ -1,6 +1,7 @@
 import { loadAll as yamlLoadAll } from "js-yaml";
 import { core } from "@/lib/k8s";
 import { getFile } from "@/lib/github";
+import { ensureRunnerSecret } from "@/lib/runner-secret";
 
 // A tenant (business) is discovered by scanning cluster namespaces for the
 // label `equity.io/tenant`. The label value is the slug used in URLs; the
@@ -98,4 +99,61 @@ export async function discoverTenantsFromRepo(): Promise<Tenant[] | null> {
     else byslug.set(slug, { slug, name, namespaces: [nsName] });
   }
   return Array.from(byslug.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export type ReconcileResult = {
+  created: string[];                              // slugs of tenants newly applied
+  skipped: string[];                              // slugs already present in cluster
+  errors: Array<{ slug: string; error: string }>; // per-tenant failures (non-fatal)
+};
+
+// Create any tenant namespaces declared in the fork's bootstrap yaml that
+// are missing from the live cluster. Idempotent — "already exists" from the
+// k8s API is treated as success. Callers (e.g. the OAuth callback) should
+// treat all errors as best-effort: reconcile failures never block auth.
+export async function reconcileTenantsFromRepo(): Promise<ReconcileResult> {
+  const result: ReconcileResult = { created: [], skipped: [], errors: [] };
+  const [repo, cluster] = await Promise.all([
+    discoverTenantsFromRepo(),
+    discoverTenants().catch(() => [] as Tenant[]),
+  ]);
+  if (!repo) return result;
+
+  const clusterSlugs = new Set(cluster.map((t) => t.slug));
+  for (const tenant of repo) {
+    if (clusterSlugs.has(tenant.slug)) {
+      result.skipped.push(tenant.slug);
+      continue;
+    }
+    let hadError = false;
+    for (const ns of tenant.namespaces) {
+      try {
+        await core().createNamespace({
+          body: {
+            metadata: {
+              name: ns,
+              labels: {
+                "equity.io/tenant": tenant.slug,
+                "equity.io/tenant-name": tenant.name,
+              },
+            },
+          },
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("already exists")) continue;
+        hadError = true;
+        result.errors.push({ slug: tenant.slug, error: msg });
+      }
+      // Best-effort: seed the claude-runner-auth Secret so AI crons work
+      // without a manual bootstrap step. Silent when no token is
+      // configured; non-fatal when the k8s call fails.
+      const secret = await ensureRunnerSecret(ns);
+      if (!secret.ok) {
+        console.error(`[runner-secret] auto-seed failed for ${tenant.slug}/${ns}:`, secret.reason);
+      }
+    }
+    if (!hadError) result.created.push(tenant.slug);
+  }
+  return result;
 }

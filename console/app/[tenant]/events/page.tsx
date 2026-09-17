@@ -33,11 +33,17 @@ export default async function EventsPage({ params }: Props) {
         <div className="mb-6 p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">
           <div className="font-semibold text-amber-200 mb-1">NATS monitoring unreachable</div>
           <div className="text-neutral-400 mb-3">{snap.error}</div>
-          <div className="text-xs text-neutral-500">
-            Local:{" "}
-            <code className="text-neutral-300">
-              kubectl port-forward -n nats svc/nats-headless 8222:8222
-            </code>
+          <div className="text-xs text-neutral-500 space-y-1">
+            <div>
+              Local dev: <code className="text-neutral-300">./local/up.sh</code> auto-starts a
+              port-forward from :8222 → nats-headless.
+            </div>
+            <div>
+              Manual escape hatch:{" "}
+              <code className="text-neutral-300">
+                kubectl port-forward -n nats svc/nats-headless 8222:8222
+              </code>
+            </div>
           </div>
         </div>
       )}
