@@ -116,9 +116,14 @@ spec:
 
   // Runner mode: fixed image + entrypoint, prompt lives in env. YAML block
   // scalar (|-) preserves newlines and quotes without shell-escape pain.
+  // Empty source lines stay empty (no indent) — otherwise blank lines in
+  // the prompt render as "                    " and yamllint (rightly)
+  // rejects them as trailing whitespace. YAML block-scalar rules treat a
+  // fully-empty line between indented content as a literal newline in
+  // the string, so this is a no-op semantically.
   const promptIndented = input.prompt
     .split("\n")
-    .map((l) => `                    ${l}`)
+    .map((l) => (l.length === 0 ? "" : `                    ${l}`))
     .join("\n");
   return `${header}
               image: ${CLAUDE_RUNNER_IMAGE}

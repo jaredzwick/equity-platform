@@ -224,6 +224,10 @@ NATS_PF_LOG="$SCRIPT_DIR/.nats-pf.log"
 if [ -z "$GIT_REPO_URL" ]; then
   echo "  Local-only mode (no GitHub backup — enable via console → Agency → GitHub)"
 else
+  # Surface where the URL came from — useful when debugging "why is
+  # ArgoCD pointing at the wrong fork" without hunting through env +
+  # flags + config files by hand.
+  echo "  GIT repo URL: $GIT_REPO_URL (source: $GIT_REPO_SOURCE)"
   export GIT_REPO_URL
 
   # --- ArgoCD private-repo credential ---

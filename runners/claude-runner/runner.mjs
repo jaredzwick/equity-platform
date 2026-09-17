@@ -17,7 +17,7 @@
 
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { connect, JSONCodec } from "nats";
+import { connect, JSONCodec, RetentionPolicy, StorageType } from "nats";
 
 const {
   PROMPT,
@@ -116,11 +116,57 @@ const envelope = {
   },
 };
 
+// Stream provisioning is normally done at business-creation time (see
+// console/lib/nats-streams.ts + console/app/master/new/actions.ts).
+// This self-heal covers the failure modes where that hasn't happened
+// yet — restore-from-snapshot on down/up cycles, tenants created via
+// paths that skip the provisioning call, or a fresh cluster where the
+// stream was garbage-collected. Keeping the config in sync with
+// nats-streams.ts is important — drift means two streams with the
+// same name and different retention could exist across nodes.
+const STREAM_NAME = `EVENTS_${TENANT.replace(/-/g, "_").toUpperCase()}`;
+const STREAM_SUBJECTS = [`events.${TENANT}.>`];
+const STREAM_MAX_AGE_NS = 7 * 24 * 60 * 60 * 1_000_000_000;   // 7 days
+const STREAM_MAX_BYTES = 1 << 30;                              // 1 GiB
+
+async function ensureStream(nc) {
+  const jsm = await nc.jetstreamManager();
+  const existing = await jsm.streams.info(STREAM_NAME).catch(() => null);
+  if (existing) return { existed: true };
+  await jsm.streams.add({
+    name: STREAM_NAME,
+    subjects: STREAM_SUBJECTS,
+    retention: RetentionPolicy.Limits,
+    storage: StorageType.File,
+    max_age: STREAM_MAX_AGE_NS,
+    max_bytes: STREAM_MAX_BYTES,
+    num_replicas: 1,
+  });
+  return { existed: false };
+}
+
 const codec = JSONCodec();
 let published = false;
 for (let attempt = 1; attempt <= 3 && !published; attempt++) {
   try {
     const nc = await connect({ servers: NATS_URL, name: `claude-runner-${CRON_NAME}` });
+    // Self-heal: create the stream if it doesn't exist. Runs on every
+    // publish attempt so a transient jetstream-manager failure doesn't
+    // permanently lock us out — cheap: streams.info is a single info
+    // request when the stream already exists.
+    try {
+      const s = await ensureStream(nc);
+      if (!s.existed) {
+        console.error(`[claude-runner] auto-provisioned stream ${STREAM_NAME}`);
+      }
+    } catch (streamErr) {
+      // Non-fatal — the publish below will still error clearly if the
+      // stream truly isn't reachable, and we'll retry.
+      console.error(
+        `[claude-runner] warn: could not ensure stream ${STREAM_NAME}:`,
+        streamErr instanceof Error ? streamErr.message : streamErr,
+      );
+    }
     const js = nc.jetstream();
     await js.publish(subject, codec.encode(envelope), { msgID: envelope.id });
     console.error(`[claude-runner] ✓ published ${subject} (attempt ${attempt})`);

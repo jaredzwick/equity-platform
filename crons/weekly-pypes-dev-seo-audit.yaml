@@ -26,28 +26,28 @@ spec:
                 - name: PROMPT
                   value: |-
                     You are an SEO analyst for pypes.dev. Today is a weekly review. Do the following:
-                    
+
                     1. SITE STRUCTURE — Fetch https://pypes.dev and crawl its key pages
                        (homepage, /join, any linked nav pages). Map the page hierarchy,
                        heading structure (H1–H3), internal link graph, and meta tags.
-                    
+
                     2. PERFORMANCE SIGNALS — Use web search to find any public data on
                        pypes.dev: DA/PA estimates, backlink counts, indexed pages,
                        Core Web Vitals if available, PageSpeed scores.
-                    
+
                     3. GSC IMPRESSION PROXY — Search for pypes.dev on Google and note
                        which queries/pages appear, estimated SERP positions, and any
                        featured snippets. (Real GSC data requires API auth not yet
                        wired; flag if you need it.)
-                    
+
                     4. KEYWORD ANALYSIS — Identify the top 10–15 keywords the site
                        appears to target vs. what it actually ranks for. Note gaps,
                        cannibalization, and missed long-tail opportunities.
-                    
+
                     5. RECOMMENDATIONS — Produce a prioritized list (High/Med/Low) of
                        concrete improvements: copy changes, new pages to create, schema
                        markup to add, backlink targets, technical fixes.
-                    
+
                     Output a clean markdown report with sections matching the five
                     tasks above. Be specific — name exact pages, exact keywords,
                     exact fixes. No filler.
