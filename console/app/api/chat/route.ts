@@ -234,6 +234,27 @@ export async function POST(req: NextRequest) {
     // silently merging in the operator's own ~/.claude configs (e.g.
     // Notion, Gamma) — the chat should only see equity-platform tools.
     args.push("--mcp-config", MCP_CONFIG_PATH, "--strict-mcp-config");
+
+    // Pre-approve the equity MCP tools so they can be called from the
+    // non-interactive `claude --print` subprocess. Without this, claude
+    // treats every tool call as needing OS-level permission approval,
+    // and there's no UI to show that prompt in — the model just sees a
+    // "blocked" error. Safety is enforced two layers up: (1) CRON_PRIMER
+    // above mandates YAML preview + explicit user confirmation before
+    // the model calls create_cron, and (2) the equity MCP server
+    // itself validates every input + refuses master-slug / duplicate
+    // names / missing GitHub config. This flag only opens the OS
+    // permission gate, not the semantic one.
+    args.push(
+      "--allowedTools",
+      [
+        "mcp__equity__list_businesses",
+        "mcp__equity__get_business",
+        "mcp__equity__create_business",
+        "mcp__equity__update_profile",
+        "mcp__equity__create_cron",
+      ].join(","),
+    );
   }
 
   const proc = spawn(
