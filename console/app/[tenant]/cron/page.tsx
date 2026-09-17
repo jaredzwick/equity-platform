@@ -90,10 +90,21 @@ export default async function CronPage({ params }: Props) {
                 s === "never" ? "bg-neutral-500" :
                 "bg-amber-500";
               return (
-                <tr key={`${r.namespace}/${r.name}`} className="border-t border-[color:var(--color-border)]">
+                <tr key={`${r.namespace}/${r.name}`} className="border-t border-[color:var(--color-border)] hover:bg-white/[0.02]">
                   <td className="p-3"><span className={`inline-block w-2 h-2 rounded-full ${color}`} title={s} /></td>
                   <td className="p-3 text-[color:var(--color-muted)]">{r.namespace}</td>
-                  <td className="p-3 font-medium">{r.name}</td>
+                  <td className="p-3 font-medium">
+                    {isMaster ? (
+                      r.name
+                    ) : (
+                      <Link
+                        href={`/${slug}/cron/${r.name}`}
+                        className="hover:text-emerald-400 underline-offset-2 hover:underline"
+                      >
+                        {r.name}
+                      </Link>
+                    )}
+                  </td>
                   <td className="p-3 font-mono text-xs">{r.schedule}</td>
                   <td className="p-3 text-[color:var(--color-muted)]">{relative(r.lastSuccessfulTime)}</td>
                   <td className="p-3">{r.activeCount > 0 ? <span className="text-amber-400">{r.activeCount}</span> : "—"}</td>
