@@ -346,6 +346,21 @@ describe("renderCronYaml — runner mode", () => {
     expect(yaml).toContain("                    line two");
     expect(yaml).toContain("                    line three");
   });
+
+  it("REGRESSION: blank lines inside a multi-line prompt render as fully empty (no trailing whitespace)", () => {
+    // Root cause of CI yamllint failures: earlier version prepended the
+    // 20-space indent to every prompt line INCLUDING blank ones, so a
+    // paragraph break rendered as "                    \n" which
+    // yamllint (rightly) rejects as trailing whitespace.
+    const yaml = renderCronYaml(runnerInput({ prompt: "para one\n\npara two" }));
+    // Sanity: content is present.
+    expect(yaml).toContain("                    para one");
+    expect(yaml).toContain("                    para two");
+    // The critical assertion: NO line in the output should end in
+    // whitespace before its newline. Scan every line.
+    const offenders = yaml.split("\n").filter((l) => /[ \t]+$/.test(l));
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe("buildCronJobBody", () => {

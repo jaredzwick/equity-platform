@@ -77,6 +77,11 @@ stop_nats_pf() {
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
       kill -TERM "$pid" 2>/dev/null || true
       sleep 1
+      # Escalate to SIGKILL if still alive. The `A && B || true` chain
+      # is the kill-sequence idiom, not a broken if-then-else — the
+      # trailing `|| true` catches ALL failures (both A false and B
+      # failing) so we swallow the "already dead" case cleanly.
+      # shellcheck disable=SC2015
       kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
       echo "✓ NATS port-forward (PID $pid) stopped."
     fi
