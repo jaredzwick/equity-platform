@@ -5,6 +5,7 @@ import { canWriteToRepo, getFile, putFile } from "@/lib/github";
 import { discoverTenants } from "@/lib/tenants";
 import { ensureTenantEmailDb, isEmailDbConfigured } from "@/lib/email-db";
 import { ensureTenantStream } from "@/lib/nats-streams";
+import { ensureRunnerSecret } from "@/lib/runner-secret";
 import { parseBusinessInput } from "@/lib/business-url";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -147,6 +148,16 @@ export async function provisionBusinessFromForm(formData: FormData): Promise<voi
   }
   if (commitToGit && gitCommitFailed) {
     warnings.push("Cluster ready; git backup skipped. Retry from the GitHub tab.");
+  }
+
+  // Step 5: best-effort claude-runner Secret bootstrap so AI crons on this
+  //   tenant work without a manual `make runner-secret` step. Skipped
+  //   silently if CLAUDE_CODE_OAUTH_TOKEN isn't set — chat's create_cron
+  //   pre-flight will surface a clear remediation later.
+  const secretResult = await ensureRunnerSecret(namespace);
+  if (!secretResult.ok) {
+    console.error(`[runner-secret] auto-seed failed for ${slug}:`, secretResult.reason);
+    warnings.push("AI runner secret not seeded. Retry with `make runner-secret NS=" + namespace + "`.");
   }
 
   revalidatePath("/master");

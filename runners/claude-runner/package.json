@@ -1,0 +1,14 @@
+{
+  "name": "equity-claude-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generic AI-cron runner: spawns claude --print, publishes NATS event on finish.",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^2.0.0",
+    "nats": "^2.29.3"
+  }
+}

@@ -7,6 +7,8 @@
 // Runtime: nodejs (child_process not available on edge). Marked below.
 
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { NextRequest } from "next/server";
 import { buildBusinessContext } from "@/lib/business-context";
 
@@ -59,8 +61,76 @@ yet — only registerEnrich ships today; the others follow the same shape).
 Do NOT emit shell commands to write files. Return code the user pastes.
 --- END EVENTS PRIMITIVE ---`;
 
+// Primer for the cron primitive. Appended to every chat system prompt so
+// the assistant can schedule AI-run cron jobs via the MCP tool.
+// Consumers: `create_cron` in console/mcp/server.ts. If you change the
+// tool schema, update this primer AND the console/mcp/README.md example.
+const CRON_PRIMER = `--- CRON PRIMITIVE (for scheduling AI work on a schedule) ---
+
+Tool: create_cron  (from the equity MCP server, loaded via .mcp.json)
+
+Two calling shapes:
+  1) Runner mode — { tenant, name, schedule, prompt }
+     Runs equity/claude-runner:latest on the schedule. The container spawns
+     \`claude --print $PROMPT\` inside a pod, streams stdout to k8s logs,
+     and publishes ONE JetStream event to events.<tenant>.cron.completed
+     on finish (envelope: { id, tenant, actor, source, ts, schemaVersion:1,
+     data: { cronName, model, exitCode, durationMs, prompt, summary } }).
+     Concurrency defaults to Forbid (LLM runs are expensive; skip overlaps).
+  2) Shell mode — { tenant, name, schedule, image, command }
+     Runs the given image with /bin/sh -c '<command>'. For non-AI crons.
+
+Schedule inference examples:
+  "weekly"                → "0 0 * * 0"
+  "every Monday at 9am"   → "0 9 * * 1"
+  "daily"                 → "0 0 * * *"
+  "every hour"            → "0 * * * *"
+  "every 5 minutes"       → "*/5 * * * *"
+
+Name inference: kebab-case, ≤52 chars, derived from the intent
+(e.g. "weekly gsc audit" → "weekly-gsc-audit").
+
+Namespace defaults to the tenant's first known namespace — omit \`namespace\`
+unless the operator specifies one.
+
+MANDATORY WORKFLOW when the operator asks to schedule anything:
+
+  Step 1: Propose the full YAML in a code block. Show schedule, image (name
+          it — 'equity/claude-runner:latest' for runner mode), command or
+          prompt, namespace, and concurrency. Explain what will happen on
+          each run in one sentence.
+  Step 2: Ask "commit + apply?" and WAIT for explicit confirmation
+          ("yes", "go", "do it", "ship it", or similar).
+  Step 3: Only after confirmation, call create_cron.
+  Step 4: Report the tool's return text verbatim so the operator sees the
+          git path + confirmation.
+
+If the operator asks to tweak the proposal ("make it daily instead", "call
+it foo instead"), update the YAML in-line and re-ask. Do NOT call
+create_cron until the operator explicitly confirms.
+
+Runner-mode pre-flight: create_cron will fail with a clear message if the
+claude-runner-auth Secret is missing in the target namespace. Surface that
+message directly — do not paper over it. The operator fixes it by running
+\`make runner-secret NS=<tenant-namespace>\` from the repo root.
+--- END CRON PRIMITIVE ---`;
+
 type ChatMsg = { role: "user" | "assistant"; content: string };
-type Body = { tenant: string; messages: ChatMsg[] };
+type Body = { tenant: string; messages: ChatMsg[]; model?: string };
+
+// Keep in sync with console/components/ModelPicker.tsx CHAT_MODELS.
+const ALLOWED_MODELS = new Set([
+  "claude-opus-4-7",
+  "claude-sonnet-4-6",
+  "claude-haiku-4-5-20251001",
+]);
+// Default lands on Sonnet — 3-5x faster TTFT than Opus for the fleet-status
+// Q&A the deck is optimised for. Operators can flip to Opus via the picker
+// (persisted per browser). Override the default globally via CHAT_MODEL.
+const DEFAULT_MODEL =
+  process.env.CHAT_MODEL && ALLOWED_MODELS.has(process.env.CHAT_MODEL)
+    ? process.env.CHAT_MODEL
+    : "claude-sonnet-4-6";
 
 // TODO: tighten tool restrictions once we verify the exact --disallowed-tools
 // flag name for this Claude Code version. For now, defaults apply; the system
@@ -80,15 +150,51 @@ export async function POST(req: NextRequest) {
   // Fresh cluster snapshot every turn — the whole point of the chat is that
   // the model sees live state, not a stale system prompt.
   const contextBlurb = await buildBusinessContext(body.tenant);
-  const systemPrompt =
-    `You are the equity-console assistant for the "${body.tenant}" business.\n\n` +
-    `Answer questions about this business's Kubernetes infrastructure AND its\n` +
-    `event bus using the LIVE STATE below. Be tight, specific, and cite exact\n` +
-    `names/namespaces/subjects. If asked something the context doesn't cover,\n` +
-    `say so plainly — do not invent app names, health statuses, or event\n` +
-    `subjects.\n\n` +
-    `--- LIVE STATE ---\n${contextBlurb}\n--- END LIVE STATE ---\n\n` +
-    `${EVENTS_PRIMER}`;
+  const isAgency = body.tenant === "master";
+
+  // The copilot layer sits ABOVE the infra layer in every conversation so
+  // the model treats business-strategy questions as first-class, not as
+  // out-of-domain "I only know Kubernetes" refusals. Ordering matters: the
+  // model reads top-to-bottom and picks the first frame that matches. The
+  // infra layer stays authoritative for anything grounded in LIVE STATE.
+  const COPILOT_LAYER =
+    `You operate in two roles for every question. Pick the right one based\n` +
+    `on the operator's intent — don't announce which role you're in, just\n` +
+    `answer well:\n\n` +
+    `  1) BUSINESS COPILOT — strategy, positioning, marketing, sales,\n` +
+    `     customer discovery, competitive analysis, pricing, product\n` +
+    `     ideation, GTM. Draw on general business knowledge. Be concrete\n` +
+    `     and specific: name real tactics, sample copy, real playbooks,\n` +
+    `     real segments. When the operator hasn't told you enough about\n` +
+    `     the business to be non-generic, ASK ONE sharp follow-up before\n` +
+    `     answering (never a checklist of questions).\n\n` +
+    `  2) INFRA ASSISTANT — Kubernetes apps, cron jobs, NATS event bus.\n` +
+    `     Use ONLY the LIVE STATE block. Cite exact names, namespaces,\n` +
+    `     subjects, counts. Never invent apps, health statuses, or event\n` +
+    `     subjects that aren't in the state block.\n\n` +
+    `If a question spans both (e.g., "which customer segment is at risk\n` +
+    `if the daily digest cron has been stale for a week?"), use both layers\n` +
+    `and mark the sections clearly in your reply.\n\n` +
+    `Voice: builder-to-builder. Concrete nouns, active voice, short\n` +
+    `paragraphs. No filler, no hedging, no permission-asking. Answer.`;
+
+  const systemPrompt = isAgency
+    ? `You are the equity-console agency copilot. You operate across ALL\n` +
+      `businesses in this workspace. When asked about strategy, pattern,\n` +
+      `or expansion across the portfolio, respond as a copilot. When asked\n` +
+      `about fleet health or cross-business infra, cite the LIVE STATE.\n` +
+      `To onboard a new business, prompt the operator through it inline.\n\n` +
+      `${COPILOT_LAYER}\n\n` +
+      `--- LIVE STATE ---\n${contextBlurb}\n--- END LIVE STATE ---\n\n` +
+      `${EVENTS_PRIMER}\n\n` +
+      `${CRON_PRIMER}`
+    : `You are the equity-console business copilot for "${body.tenant}".\n` +
+      `You are this operator's second brain for running the business AND\n` +
+      `the person keeping tabs on its infrastructure. Both roles matter.\n\n` +
+      `${COPILOT_LAYER}\n\n` +
+      `--- LIVE STATE ---\n${contextBlurb}\n--- END LIVE STATE ---\n\n` +
+      `${EVENTS_PRIMER}\n\n` +
+      `${CRON_PRIMER}`;
 
   // Multi-turn: pass the full conversation as one text prompt. Simpler than
   // subprocess session persistence and lets us stay stateless server-side.
@@ -105,16 +211,39 @@ export async function POST(req: NextRequest) {
     ? `Prior conversation:\n${historyText}\n\nLatest user turn:\n${latest.content}`
     : latest.content;
 
+  const requested = typeof body.model === "string" ? body.model : undefined;
+  const model = requested && ALLOWED_MODELS.has(requested) ? requested : DEFAULT_MODEL;
+
+  // Locate the repo-root .mcp.json (registers the equity MCP server with
+  // create_business / create_cron / etc). process.cwd() when Next.js runs
+  // via `npm run dev` is the console/ directory, so we look one up. If the
+  // file's missing (rare — this repo has one committed), pass no flag and
+  // claude falls back to CWD auto-discovery.
+  const REPO_ROOT = path.resolve(process.cwd(), "..");
+  const MCP_CONFIG_PATH = path.join(REPO_ROOT, ".mcp.json");
+  const args = [
+    "--print",
+    "--model", model,
+    "--append-system-prompt", systemPrompt,
+    // Piping the prompt via stdin avoids positional-arg conflicts with
+    // multi-word flag values like --append-system-prompt.
+  ];
+  if (existsSync(MCP_CONFIG_PATH)) {
+    // --mcp-config takes an explicit path so we don't rely on the
+    // subprocess's CWD guess. --strict-mcp-config prevents claude from
+    // silently merging in the operator's own ~/.claude configs (e.g.
+    // Notion, Gamma) — the chat should only see equity-platform tools.
+    args.push("--mcp-config", MCP_CONFIG_PATH, "--strict-mcp-config");
+  }
+
   const proc = spawn(
     "claude",
-    [
-      "--print",
-      "--model", "claude-opus-4-7",
-      "--append-system-prompt", systemPrompt,
-      // Piping the prompt via stdin avoids positional-arg conflicts with
-      // multi-word flag values like --append-system-prompt.
-    ],
+    args,
     {
+      // Set cwd to the repo root so any file-relative behavior inside MCP
+      // servers (equity/mcp/server.ts reads GITHUB_REPO env + kubeconfig
+      // by path) resolves against the repo, not the console/ dir.
+      cwd: REPO_ROOT,
       env: {
         ...process.env,
         // Force OAuth path — empty out any inherited API key.

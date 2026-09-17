@@ -14,7 +14,7 @@
 **One-command Kubernetes platform for the sub-agency model.**
 Rapidly acquire, build, scale, and exit businesses with AI. Boot locally in 3 min ($0). Provision new apps from the UI — every change is a git commit, every rollback is a `git revert`.
 
-[Quick Start](#-quick-start) · [The console](#-the-console) · [Add a business](#-add-a-business) · [GitOps write-back](#-gitops-write-back) · [Reproducibility](#-reproducibility-contract)
+[Quick Start](#-quick-start) · [The console](#-the-console) · [Schedule AI work](#-schedule-work-with-natural-language) · [Add a business](#-add-a-business) · [GitOps write-back](#-gitops-write-back) · [Reproducibility](#-reproducibility-contract)
 
 </div>
 
@@ -123,14 +123,26 @@ brew install kind kubectl helm
 git clone https://github.com/jaredzwick/equity-platform ~/equity-platform
 cd ~/equity-platform
 
-# 3. Boot the cluster
+# 3. (Optional) Enable AI-scheduled crons
+# Get a Claude Code OAuth token from `claude login` in the Claude Code CLI,
+# then add it to console/.env.local:
+#   CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
+# Copy the MCP config template so the chat can call create_cron:
+#   cp .mcp.json.example .mcp.json
+# Without these you get shell-mode crons; with them, up.sh also builds the
+# runner image + seeds the per-tenant Secret. See the section below.
+
+# 4. Boot the cluster
 ./local/up.sh
 # → creates kind cluster (~90s)
 # → installs ArgoCD v2.13.1 (~2min)
 # → applies platform namespaces (no tenants yet — you create them via the console)
 # → applies root app-of-apps if a git remote is set
+# → builds equity/claude-runner:latest + loads it into kind (if Docker is up)
+# → seeds claude-runner-auth Secret in every tenant namespace (if token is set)
+# → prints "AI runner: ready | partial | unavailable" in the summary
 
-# 4. Start the console
+# 5. Start the console
 cd console
 npm install
 npm run dev
@@ -169,7 +181,7 @@ The console is the whole UX. Sidebar lists every business (auto-discovered from 
 |---|---|---|
 | **Overview** | Apps + CronJobs at a glance, stale-cron warnings | k8s API (filtered by tenant ns) |
 | **Apps** | ArgoCD Applications table, one-click "+ New Application" | k8s API (`argoproj.io/Applications`) |
-| **Cron** | Every CronJob, staleness heuristic (red if no success in 24h) | k8s BatchV1 API |
+| **Cron** | Every CronJob, staleness heuristic (red if no success in 24h). Manual form OR ask the tenant Chat to "schedule a weekly X" — the model proposes YAML, waits for confirmation, then calls the `create_cron` MCP tool. AI-scheduled crons run `equity/claude-runner:latest` (built + loaded by `./local/up.sh`) and publish `events.<tenant>.cron.completed` on finish. See `runners/claude-runner/README.md`. | k8s BatchV1 API |
 | **Email** | Deliverability, bounce rate, complaint rate | Per-tenant Postgres `email_events` (opt-in) |
 | **Events** | NATS JetStream streams + consumers + lag | NATS `/jsz` monitoring endpoint |
 | **History** | Recent commits to this repo + revert links | GitHub API |
@@ -183,6 +195,68 @@ kubectl port-forward -n nats svc/nats-headless 8222:8222 &
 ```
 
 Or set `NATS_MONITOR_URL` in `console/.env.local`. Full env template in `console/.env.example`.
+
+---
+
+## Schedule work with natural language
+
+The tenant chat is the primary surface for scheduling AI work — weekly SEO audits, nightly competitor scans, hourly health checks. Describe what you want; the model proposes YAML, waits for your confirmation, then commits + applies the CronJob. The form at `/<tenant>/cron/new` stays as the manual escape hatch for custom images or shell commands.
+
+**Prereqs:** `CLAUDE_CODE_OAUTH_TOKEN` in `console/.env.local` AND Docker running when you first ran `./local/up.sh`. The summary line of `up.sh` reports one of four states:
+
+| State | Meaning |
+|---|---|
+| `ready` | Image loaded, secrets seeded — AI crons will run. |
+| `partial — image loaded, no token` | Set the token in `.env.local` and rerun `./local/up.sh`. |
+| `partial — token set but docker not reachable` | Start Docker Desktop and rerun. |
+| `unavailable` | Shell crons still work; AI crons blocked with a remediation pointer. |
+
+Opt out with `AI_RUNNER=0 ./local/up.sh`.
+
+**Flow:**
+
+1. Open the tenant chat at `/<tenant>/chat`.
+2. Ask for what you want:
+   > *"schedule a weekly GSC SEO audit that posts improvement suggestions based on the last week's data"*
+3. The model responds with proposed YAML (schedule inferred to `0 0 * * 0`, image defaulted to `equity/claude-runner:latest`, prompt captured from your ask) and asks **commit + apply?**
+4. Reply `yes` (or `go`, `ship it`), or ask for tweaks (`make it daily instead`, `call it seo-audit`).
+5. On confirmation, chat calls the `create_cron` MCP tool — commits `crons/<name>.yaml` to git AND applies the CronJob to the cluster.
+6. On each schedule tick, the runner container:
+   - Runs `claude --print` with your prompt (inherits the tenant's namespace + secrets)
+   - Streams stdout to k8s (`kubectl logs -l equity.io/runner=claude`)
+   - Publishes a JetStream event to `events.<tenant>.cron.completed` with the truncated summary + exit code
+7. React to the event with a NATS consumer (see `console/lib/events/README.md`) to route summaries to Slack, email, or a follow-up cron.
+
+**Under the hood:**
+
+```
+tenant chat  ──▶  claude --print + MCP  ──▶  create_cron tool
+                                                    │
+                                    validated by cron-render.ts
+                                                    │
+                                ┌───────────────────┴───────────────────┐
+                                ▼                                        ▼
+                    git commit crons/<name>.yaml            kubectl apply CronJob
+                                                                         │
+                                                            (schedule tick)
+                                                                         ▼
+                                                     equity/claude-runner:latest
+                                                     runs `claude --print $PROMPT`
+                                                                         │
+                                                                         ▼
+                                                 events.<tenant>.cron.completed
+```
+
+Files: `console/mcp/server.ts` (`create_cron`), `console/lib/cron-render.ts` (pure YAML render + validation, shared by form + MCP), `console/lib/runner-secret.ts` (auto-seed the OAuth Secret on business creation), `runners/claude-runner/` (Dockerfile + entrypoint + node runner). Deeper design notes in `runners/claude-runner/README.md`.
+
+**Escape hatches** — only needed if you iterate on the runner or add the token after `up.sh`:
+
+```bash
+make runner                        # rebuild + reload the image into kind
+make runner-secret NS=<tenant-ns>  # seed the Secret in one specific namespace
+```
+
+Both idempotent; both wrap what `up.sh` already does automatically.
 
 ---
 
@@ -256,11 +330,13 @@ The console can provision new ArgoCD Applications for you. **Every change is a c
 **The whole system boots and tears down with two scripts.** This is the promise:
 
 ```bash
-./local/up.sh      # boot: kind + ArgoCD + platform apps + tenants
+./local/up.sh      # boot: kind + ArgoCD + platform apps + tenants + AI runner
 ./local/down.sh    # nuke: everything gone
 ```
 
 Nothing is manual. Every infra change is a file in this repo. Every runtime change is a commit in this repo (via console) or a `kubectl apply` in your terminal.
+
+`up.sh` also builds `equity/claude-runner:latest` and seeds the `claude-runner-auth` Secret in every tenant namespace if `CLAUDE_CODE_OAUTH_TOKEN` is set in `console/.env.local` and Docker is running. Missing either is non-fatal — shell-mode crons work regardless; AI-mode crons fail fast with a pointer to the exact fix. Explicit opt-out: `AI_RUNNER=0 ./local/up.sh`.
 
 Verified end-to-end on every push: shellcheck + yamllint + kubeconform against `bootstrap/` and `apps/`. Required to merge. CodeQL runs weekly.
 
@@ -279,6 +355,8 @@ Verified end-to-end on every push: shellcheck + yamllint + kubeconform against `
 | **Contents API for write-back** | Local git clone + shell out | No git state to manage; works local + in-cluster |
 | **2 commits per new app** | Git Data API (atomic) | Simpler; upgrade when atomicity bites |
 | **Revert via GitHub link** | In-console revert | Keeps destructive actions in the review-friendly flow |
+| **One generic claude-runner image** | Custom image per cron type | New AI capabilities land as MCP tools on one image, not as N new container builds |
+| **Runtime signal subject (no `v<n>`)** | Versioned domain subject | `events.<tenant>.cron.completed` is a run outcome, not a domain event — kept out of the versioned grammar deliberately |
 
 ---
 
