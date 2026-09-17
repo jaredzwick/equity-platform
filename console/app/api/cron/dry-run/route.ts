@@ -21,6 +21,7 @@
 import { spawn } from "node:child_process";
 import { NextRequest } from "next/server";
 import { MCP_CONFIG_EMPTY } from "@/lib/mcp-configs";
+import { DRY_RUN_ALLOWED_TOOLS, joinAllowedTools } from "@/lib/claude-flags";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +70,11 @@ export async function POST(req: NextRequest) {
       // truth; a lint test guards against drift.
       "--mcp-config", MCP_CONFIG_EMPTY,
       "--strict-mcp-config",
+      // Allow WebFetch + WebSearch so the model can actually run SEO
+      // audits and URL fetches during a dry-run. Without this, --print
+      // mode denies all tools by default and the model refuses even
+      // safe fetches. See console/lib/claude-flags.ts for the rationale.
+      "--allowedTools", joinAllowedTools(DRY_RUN_ALLOWED_TOOLS),
     ],
     {
       env: {

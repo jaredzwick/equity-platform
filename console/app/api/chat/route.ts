@@ -12,6 +12,7 @@ import path from "node:path";
 import { NextRequest } from "next/server";
 import { buildBusinessContext } from "@/lib/business-context";
 import { resolveTargetRepo } from "@/lib/github";
+import { CHAT_ALLOWED_TOOLS, joinAllowedTools } from "@/lib/claude-flags";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,6 +131,29 @@ Runner-mode pre-flight: create_cron will fail with a clear message if the
 claude-runner-auth Secret is missing in the target namespace. Surface that
 message directly — do not paper over it. The operator fixes it by running
 \`make runner-secret NS=<tenant-namespace>\` from the repo root.
+
+RUNNER CAPABILITIES (what the claude-runner container can actually do
+each tick — keep proposals within these lines or flag the gap):
+  ✅ WebFetch — fetch any public URL (a page, sitemap, robots.txt, RSS,
+     public JSON API). Enough for structural site audits, competitor
+     landing-page scans, public metrics scraping.
+  ✅ WebSearch — Google-style search for keyword research, competitor
+     discovery, current-events grounding.
+  ❌ Google Search Console / Google Analytics / any OAuth-gated API —
+     NOT wired. The runner has no service-account credentials. If a
+     proposal genuinely needs GSC-level analytics data, propose the cron
+     WITH THAT LIMITATION CALLED OUT ("Note: this uses public web
+     signals only; wire a GSC service account into the runner Secret
+     when you want real impression data").
+  ❌ Bash / Edit / Write / Read on the container filesystem — the
+     ephemeral pod has no useful state. The runner's job is: reason
+     with the LLM using web signals + the prompt, produce a report,
+     publish it to the completion event. Don't propose crons that
+     "write files" or "run scripts" — that pattern belongs in shell
+     mode (image + command), not runner mode.
+  ✅ Report to pod stdout + a NATS envelope on
+     events.<tenant>.cron.completed. Both persist per k8s / JetStream
+     retention.
 --- END CRON PRIMITIVE ---`;
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -252,7 +276,8 @@ export async function POST(req: NextRequest) {
     // Notion, Gamma) — the chat should only see equity-platform tools.
     args.push("--mcp-config", MCP_CONFIG_PATH, "--strict-mcp-config");
 
-    // Pre-approve the equity MCP tools so they can be called from the
+    // Pre-approve the equity MCP tools + read-only native tools
+    // (WebFetch, WebSearch) so they can be called from the
     // non-interactive `claude --print` subprocess. Without this, claude
     // treats every tool call as needing OS-level permission approval,
     // and there's no UI to show that prompt in — the model just sees a
@@ -261,17 +286,10 @@ export async function POST(req: NextRequest) {
     // the model calls create_cron, and (2) the equity MCP server
     // itself validates every input + refuses master-slug / duplicate
     // names / missing GitHub config. This flag only opens the OS
-    // permission gate, not the semantic one.
-    args.push(
-      "--allowedTools",
-      [
-        "mcp__equity__list_businesses",
-        "mcp__equity__get_business",
-        "mcp__equity__create_business",
-        "mcp__equity__update_profile",
-        "mcp__equity__create_cron",
-      ].join(","),
-    );
+    // permission gate, not the semantic one. Mutating native tools
+    // (Bash/Edit/Write/Read) are deliberately NOT in the list — chat
+    // shouldn't shell out on the console host. See claude-flags.ts.
+    args.push("--allowedTools", joinAllowedTools(CHAT_ALLOWED_TOOLS));
   }
 
   // Force GITHUB_REPO in the spawn env to whatever the console has resolved

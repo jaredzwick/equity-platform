@@ -48,9 +48,17 @@ console.error(
   `[claude-runner] starting cron=${CRON_NAME} tenant=${TENANT} model=${MODEL} runId=${runId}`,
 );
 
+// Read-only native tools the runner is allowed to call. Kept in sync
+// with console/lib/claude-flags.ts RUNNER_ALLOWED_TOOLS — a lint test
+// on the console side asserts this list matches. Without an explicit
+// allow-list, `claude --print` denies every tool call by default, so
+// even a WebFetch of the target site fails and the "audit" produces
+// nothing.
+const ALLOWED_TOOLS = ["WebFetch", "WebSearch"].join(",");
+
 const proc = spawn(
   "claude",
-  ["--print", "--model", MODEL],
+  ["--print", "--model", MODEL, "--allowedTools", ALLOWED_TOOLS],
   {
     stdio: ["pipe", "pipe", "inherit"],
     env: process.env,
