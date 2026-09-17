@@ -1,5 +1,6 @@
 {
   "//": "Copy to .mcp.json (which is gitignored). Registers the equity MCP so Claude Code (CLI and the console's /chat page) can call list_businesses / create_business / update_profile / create_cron. Env vars flow through from your shell + console/.env.local. Add your own personal MCPs (Notion, Gamma, etc.) to your local copy — this template ships equity-only.",
+  "//kubeconfig": "KUBECONFIG is optional — if unset in your shell, the MCP falls back to ~/.kube/config automatically. Only set it if you use a non-default kubeconfig path.",
   "mcpServers": {
     "equity": {
       "type": "stdio",

@@ -27,6 +27,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { KubeConfig, CoreV1Api, BatchV1Api } from "@kubernetes/client-node";
 import { load as yamlLoad, dump as yamlDump } from "js-yaml";
+import { homedir } from "node:os";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { parseBusinessInput } from "../lib/business-url.js";
 import {
   ALLOWED_CONCURRENCY,
@@ -39,12 +42,36 @@ import {
 } from "../lib/cron-render.js";
 
 // ── K8s client (kubeconfig or in-cluster) ────────────────────────────────────
+//
+// When this MCP is spawned as a child of `claude --print` (e.g. from the
+// console's /api/chat route), Claude Code hands the subprocess a minimal
+// env — only the vars listed in .mcp.json's `env` block. That block passes
+// `KUBECONFIG: "${KUBECONFIG}"`; if the operator's shell hasn't exported
+// KUBECONFIG explicitly (relying on the standard ~/.kube/config default),
+// the substitution yields empty string. loadFromDefault() then sees a
+// literal-empty KUBECONFIG and fails to reach the cluster instead of
+// falling back. We handle that explicitly here.
 let _core: CoreV1Api | null = null;
 let _batch: BatchV1Api | null = null;
 function kubeConfig(): KubeConfig {
   const kc = new KubeConfig();
-  if (process.env.KUBERNETES_SERVICE_HOST) kc.loadFromCluster();
-  else kc.loadFromDefault();
+  if (process.env.KUBERNETES_SERVICE_HOST) {
+    kc.loadFromCluster();
+    return kc;
+  }
+  const envPath = process.env.KUBECONFIG?.trim();
+  if (envPath) {
+    kc.loadFromFile(envPath);
+    return kc;
+  }
+  const defaultPath = path.join(homedir(), ".kube", "config");
+  if (existsSync(defaultPath)) {
+    kc.loadFromFile(defaultPath);
+    return kc;
+  }
+  // Last resort — lets the k8s client throw its own descriptive error
+  // instead of us guessing at what's wrong.
+  kc.loadFromDefault();
   return kc;
 }
 function core(): CoreV1Api {
