@@ -464,10 +464,27 @@ async function toolCreateCron(args: CreateCronArgs): Promise<string> {
       await core().readNamespacedSecret({ name: CLAUDE_RUNNER_SECRET, namespace });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      // Cluster unreachable vs. secret genuinely missing vs. everything
+      // else — three very different fixes, three different messages.
+      if (
+        msg.includes("ECONNREFUSED") ||
+        msg.includes("ENOTFOUND") ||
+        msg.includes("ETIMEDOUT") ||
+        msg.includes("no current context") ||
+        msg.includes("context") && msg.includes("not exist") ||
+        msg.includes("dial tcp")
+      ) {
+        return (
+          `Cannot create cron: cluster unreachable (${msg}). ` +
+          `Your kind cluster may be down or your kubectl context is stale. ` +
+          `Fix: run \`./local/up.sh\` from the repo root to bring it back.`
+        );
+      }
       if (msg.includes("not found") || msg.includes("404")) {
         return (
           `Cannot create cron: secret "${CLAUDE_RUNNER_SECRET}" not found in namespace "${namespace}". ` +
-          `Run \`make runner\` (or see runners/claude-runner/README.md) to bootstrap it.`
+          `Fix: run \`make runner-secret NS=${namespace}\` from the repo root ` +
+          `(or rerun \`./local/up.sh\` which auto-seeds it for every tenant namespace).`
         );
       }
       return `Cannot create cron: failed to verify runner secret: ${msg}`;
