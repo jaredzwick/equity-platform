@@ -58,7 +58,14 @@ VERBOSE="${VERBOSE:-0}"
 #      to be.
 unset KUBECONFIG
 export KUBECONFIG="$HOME/.kube/config"
-kubectl() { command kubectl --context="kind-$CLUSTER_NAME" "$@"; }
+# Hardcode the context name into the wrapper rather than expanding
+# $CLUSTER_NAME at call time — subshells (bash -c … from quietsh) inherit
+# exported functions but NOT unexported shell variables, so the naive
+# expansion resolves to "kind-" inside those subshells and kubectl fails
+# with `error: context "kind-" does not exist`. If CLUSTER_NAME ever
+# needs to be dynamic, `export CLUSTER_NAME` above and reintroduce the
+# expansion here.
+kubectl() { command kubectl --context="kind-equity-local" "$@"; }
 export -f kubectl
 
 # quiet <label> <cmd> [args...] — run a command silent unless it fails.

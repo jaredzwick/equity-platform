@@ -1,6 +1,6 @@
 import { discoverTenants, type Tenant } from "@/lib/tenants";
 import { listArgoApps, listCronJobs } from "@/lib/k8s";
-import MasterView from "./MasterView";
+import CommandDeck from "./CommandDeck";
 
 export const dynamic = "force-dynamic";
 
@@ -38,5 +38,5 @@ async function summarize(t: Tenant): Promise<BusinessSummary> {
 export default async function MasterPage() {
   const tenants = await discoverTenants().catch(() => []);
   const businesses = await Promise.all(tenants.map(summarize));
-  return <MasterView businesses={businesses} />;
+  return <CommandDeck businesses={businesses} />;
 }

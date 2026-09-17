@@ -73,7 +73,21 @@ export async function pollDeviceFlow(deviceCode: string): Promise<DevicePollResu
 // Check whether the equity-console GitHub App is installed on the target
 // repo for a given user token. Shared between /api/auth/install-status and
 // server components that need the same signal.
-const APP_SLUG = "equity-console";
+export const APP_SLUG = "equity-console";
+
+// Build the install URL. When redirectUri is set, GitHub will send the user
+// back to that specific URI after install (even if the App has multiple
+// registered redirect URIs) — as long as the URI is registered on the App
+// settings page. This is what lets one App instance serve local dev, staging,
+// and prod without depending on redirect-URI list ORDER.
+export function appInstallUrl(redirectUri?: string, state?: string): string {
+  const base = `https://github.com/apps/${APP_SLUG}/installations/new`;
+  const params = new URLSearchParams();
+  if (redirectUri) params.set("redirect_uri", redirectUri);
+  if (state) params.set("state", state);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
 
 export type InstallStatus =
   | { installed: true; targetRepo: string; installationId: number }

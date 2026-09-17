@@ -9,7 +9,6 @@ import {
   type BusinessProfile,
   type Field,
 } from "@/lib/business-profile";
-import { isConfigured } from "@/lib/github";
 import { resolveTenant, MASTER_SLUG } from "@/lib/tenants";
 
 // Coerce form value strings into the right JS type for the schema field.
@@ -35,9 +34,6 @@ export async function saveProfileFromForm(formData: FormData): Promise<void> {
   if (tenant === MASTER_SLUG || !tenant) {
     redirect(`${back}?error=${encodeURIComponent("Pick a business first.")}`);
   }
-  if (!(await isConfigured())) {
-    redirect(`${back}?error=${encodeURIComponent("GITHUB_TOKEN + GITHUB_REPO must be set in console/.env.local.")}`);
-  }
 
   const t = await resolveTenant(tenant);
   if (!t) redirect(`${back}?error=${encodeURIComponent(`Unknown tenant: ${tenant}`)}`);
@@ -56,14 +52,20 @@ export async function saveProfileFromForm(formData: FormData): Promise<void> {
     }
   }
 
+  let result;
   try {
-    await saveProfile(tenant, profile);
+    result = await saveProfile(tenant, profile);
   } catch (e) {
+    // Only fires on local-write failure — filesystem/permissions/disk.
     const msg = e instanceof Error ? e.message : String(e);
     redirect(`${back}?error=${encodeURIComponent(`Save failed: ${msg}`)}`);
   }
 
   revalidatePath(back);
   revalidatePath(`/${tenant}/history`);
-  redirect(`${back}?saved=1`);
+
+  const qs = new URLSearchParams({ saved: "1" });
+  if (result.gitError) qs.set("gitwarn", result.gitError);
+  if (result.gitCommitSha) qs.set("git", result.gitCommitSha.slice(0, 7));
+  redirect(`${back}?${qs.toString()}`);
 }

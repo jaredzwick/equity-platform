@@ -22,7 +22,10 @@ BUSINESSES_SNAPSHOT="$STATE_DIR/businesses.yaml"
 # the intermediate read/snapshot steps that could still leak state.
 unset KUBECONFIG
 export KUBECONFIG="$HOME/.kube/config"
-kubectl() { command kubectl --context="kind-$CLUSTER_NAME" "$@"; }
+# Hardcode the context name into the wrapper (see up.sh for the full
+# reason; short version: `bash -c` subshells inherit exported functions
+# but not unexported shell variables).
+kubectl() { command kubectl --context="kind-equity-local" "$@"; }
 export -f kubectl
 
 # Stop the console. `npm run dev` forks `next-server` as a child process

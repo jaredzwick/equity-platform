@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { pollDeviceFlow, fetchUser } from "@/lib/github-oauth";
 import { getSession } from "@/lib/session";
+import { reconcileTenantsFromRepo } from "@/lib/tenants";
 
 // POST /api/auth/poll — poll for the access token after the user enters the
 // device code at github.com/login/device. Reads device_code from the session.
@@ -27,6 +28,23 @@ export async function POST() {
       session.avatarUrl = user.avatarUrl;
       (session as unknown as { deviceCode?: string }).deviceCode = undefined;
       await session.save();
+
+      // Auto-provision any businesses declared in the fork's bootstrap yaml
+      // that aren't in the cluster yet. Best-effort: never block auth on it.
+      try {
+        const rec = await reconcileTenantsFromRepo();
+        if (rec.created.length) {
+          console.log(
+            `[auth/poll] auto-provisioned ${rec.created.length} tenant(s): ${rec.created.join(", ")}`,
+          );
+        }
+        if (rec.errors.length) {
+          console.warn("[auth/poll] tenant reconcile errors:", rec.errors);
+        }
+      } catch (e) {
+        console.error("[auth/poll] tenant reconcile failed:", e);
+      }
+
       return NextResponse.json({ status: "success", login: user.login });
     }
     return NextResponse.json(result);

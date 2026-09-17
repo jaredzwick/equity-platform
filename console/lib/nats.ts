@@ -1,7 +1,8 @@
 // NATS JetStream monitoring — reads the nats-server /jsz HTTP endpoint.
 //
-// Local dev requires a port-forward:
-//   kubectl port-forward -n nats svc/nats-headless 8222:8222
+// Local dev: `./local/up.sh` auto-starts a background port-forward
+//   (kubectl port-forward -n nats svc/nats-headless 8222:8222 4222:4222),
+//   PID tracked in local/.nats-pf.pid, killed by ./local/down.sh.
 // In-cluster: set NATS_MONITOR_URL=http://nats-headless.nats.svc.cluster.local:8222
 //
 // /jsz reference: https://docs.nats.io/running-a-nats-service/nats_admin/monitoring

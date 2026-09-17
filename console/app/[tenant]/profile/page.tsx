@@ -9,12 +9,12 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ tenant: string }>;
-  searchParams: Promise<{ saved?: string; error?: string; edit?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; edit?: string; gitwarn?: string; git?: string }>;
 };
 
 export default async function ProfilePage({ params, searchParams }: Props) {
   const { tenant: slug } = await params;
-  const { saved, error, edit } = await searchParams;
+  const { saved, error, edit, gitwarn, git } = await searchParams;
   if (slug === MASTER_SLUG) notFound();
 
   const tenant = await resolveTenant(slug);
@@ -24,12 +24,10 @@ export default async function ProfilePage({ params, searchParams }: Props) {
 
   let profile: Awaited<ReturnType<typeof loadProfile>> = null;
   let loadError: string | null = null;
-  if (configured) {
-    try {
-      profile = await loadProfile(slug);
-    } catch (e) {
-      loadError = e instanceof Error ? e.message : String(e);
-    }
+  try {
+    profile = await loadProfile(slug);
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : String(e);
   }
 
   const editing = edit === "1" || !profile;
@@ -40,20 +38,22 @@ export default async function ProfilePage({ params, searchParams }: Props) {
       <div className="flex items-baseline justify-between mb-4">
         <div className="text-sm text-[color:var(--color-muted)]">
           Declarative source of truth for <span className="text-[color:var(--color-fg)]">{tenant.name}</span>.
-          Saved as{" "}
-          {configuredRepoUrl ? (
-            <a
-              href={`${configuredRepoUrl}/blob/main/${profilePath(slug)}`}
-              className="underline text-emerald-400"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <code className="text-xs">{profilePath(slug)}</code>
-            </a>
-          ) : (
-            <code className="text-xs text-neutral-400">{profilePath(slug)}</code>
-          )}{" "}
-          in the platform repo.
+          Saved locally as{" "}
+          <code className="text-xs text-neutral-400">local/.state/profiles/{slug}.yaml</code>
+          {configuredRepoUrl && (
+            <>
+              {" "}and mirrored to{" "}
+              <a
+                href={`${configuredRepoUrl}/blob/main/${profilePath(slug)}`}
+                className="underline text-emerald-400"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <code className="text-xs">{profilePath(slug)}</code>
+              </a>
+            </>
+          )}
+          .
         </div>
         {!editing && profile && (
           <Link
@@ -65,17 +65,6 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         )}
       </div>
 
-      {!configured && (
-        <div className="mb-6 p-4 border border-amber-500/40 rounded-lg bg-amber-950/80 text-sm">
-          <div className="font-semibold text-amber-200 mb-1">Not configured for GitOps writeback</div>
-          <div className="text-neutral-300">
-            Profile viewing and editing requires <code className="text-neutral-100">GITHUB_TOKEN</code> +{" "}
-            <code className="text-neutral-100">GITHUB_REPO</code> in{" "}
-            <code className="text-neutral-100">console/.env.local</code>.
-          </div>
-        </div>
-      )}
-
       {loadError && (
         <div className="mb-6 p-4 border border-red-500/40 rounded-lg bg-red-950/80 text-sm text-red-200">
           Load failed: {loadError}
@@ -86,15 +75,31 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           {error}
         </div>
       )}
-      {saved && (
-        <div className="mb-6 p-4 border border-emerald-500/40 rounded-lg bg-emerald-950/80 text-sm text-emerald-200">
-          Saved. Committed to git. Refreshed live.
+      {saved && !gitwarn && (
+        <div className="mb-6 px-3 py-2 border border-emerald-500/40 rounded-lg bg-emerald-950/80 text-xs text-emerald-200">
+          Saved{git ? ` · git ${git}` : ""}.
+        </div>
+      )}
+      {saved && gitwarn && (
+        <div className="mb-6 px-3 py-2 border border-[color:var(--color-border)] rounded-lg bg-white/5 text-xs flex items-center justify-between gap-4">
+          <span className="text-[color:var(--color-fg)]">
+            Saved locally.{" "}
+            <span className="text-[color:var(--color-muted)]">
+              Git backup skipped ({/401/.test(gitwarn) ? "auth expired" : "sync error"}).
+            </span>
+          </span>
+          <Link
+            href="/master/github"
+            className="text-emerald-400 hover:underline whitespace-nowrap"
+          >
+            Fix in Agency → GitHub →
+          </Link>
         </div>
       )}
 
-      {!editing && profile && configured && <ReadOnlyProfile profile={profile} />}
+      {!editing && profile && <ReadOnlyProfile profile={profile} />}
 
-      {(editing || !configured) && (
+      {editing && (
         <ProfileEditor
           tenantSlug={slug}
           initialProfile={profile ?? {}}
