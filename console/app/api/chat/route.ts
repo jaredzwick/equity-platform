@@ -11,6 +11,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import { buildBusinessContext } from "@/lib/business-context";
+import { resolveTargetRepo } from "@/lib/github";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -257,6 +258,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Force GITHUB_REPO in the spawn env to whatever the console has resolved
+  // as the correct write target (local/.config.json first, session second,
+  // env fallback). This defends against a stale `export GITHUB_REPO=…` in
+  // the operator's shell — Next.js's .env.local does NOT override existing
+  // shell env, so without this override, MCP writes can land on the wrong
+  // repo (e.g., private business YAML landing on the public OSS repo).
+  // Non-fatal on failure: fall back to whatever the shell provides.
+  let overrideRepo: { slug?: string; branch?: string } = {};
+  try {
+    const resolved = await resolveTargetRepo();
+    overrideRepo = { slug: `${resolved.owner}/${resolved.name}`, branch: resolved.branch };
+  } catch (e) {
+    console.error("[chat] resolveTargetRepo failed — falling back to shell GITHUB_REPO:", e);
+  }
+
   const proc = spawn(
     "claude",
     args,
@@ -269,6 +285,9 @@ export async function POST(req: NextRequest) {
         ...process.env,
         // Force OAuth path — empty out any inherited API key.
         ANTHROPIC_API_KEY: "",
+        // Repo-target override (see comment above).
+        ...(overrideRepo.slug ? { GITHUB_REPO: overrideRepo.slug } : {}),
+        ...(overrideRepo.branch ? { GITHUB_BRANCH: overrideRepo.branch } : {}),
       },
       stdio: ["pipe", "pipe", "pipe"],
     },

@@ -28,8 +28,9 @@ import {
 import { KubeConfig, CoreV1Api, BatchV1Api } from "@kubernetes/client-node";
 import { load as yamlLoad, dump as yamlDump } from "js-yaml";
 import { homedir } from "node:os";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseBusinessInput } from "../lib/business-url.js";
 import {
   ALLOWED_CONCURRENCY,
@@ -93,9 +94,60 @@ function batch(): BatchV1Api {
   return _batch;
 }
 
-// ── GitHub Contents API (env-based) ──────────────────────────────────────────
+// ── GitHub write target — config-file first, env second ─────────────────────
+//
+// Precedence (must match the console-side `resolveTargetRepo` in
+// console/lib/github.ts):
+//   1. local/.config.json's `githubBackup.repoUrl` when backup is enabled —
+//      this is the UI-managed truth set via the console's GitHub tab. Wins
+//      even when the operator's shell has an old `export GITHUB_REPO=…` from
+//      another project that would otherwise silently route writes elsewhere.
+//   2. process.env.GITHUB_REPO fallback for headless / OSS-contributor use.
+//
+// This was originally env-only and caused private data to land on the OSS
+// repo when the operator's ~/.zshrc had `export GITHUB_REPO=<oss-slug>`
+// left over — Next.js's .env.local does NOT override existing shell env,
+// so console/.env.local was silently ignored. Config-file-first fixes it.
 type Repo = { owner: string; name: string; branch: string };
+
+// Slug from https://github.com/<owner>/<name>[.git] → "owner/name"
+function slugFromRepoUrl(url: string): string | null {
+  const m = url.trim().match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/);
+  return m ? `${m[1]}/${m[2]}` : null;
+}
+
+function repoFromLocalConfig(): Repo | null {
+  // The MCP is spawned from the repo root (console's chat spawn sets cwd),
+  // OR from console/ (when Claude Code CLI auto-spawns via .mcp.json). Walk
+  // up from this module's file location to find the repo root reliably.
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(here, "..", "..", "local", ".config.json"),   // repo-root/local/.config.json
+    path.resolve(here, "..", "..", "..", "local", ".config.json"),
+    path.resolve(process.cwd(), "local", ".config.json"),
+  ];
+  for (const p of candidates) {
+    if (!existsSync(p)) continue;
+    try {
+      const cfg = JSON.parse(readFileSync(p, "utf8")) as {
+        githubBackup?: { enabled?: boolean; repoUrl?: string; branch?: string };
+      };
+      if (!cfg.githubBackup?.enabled || !cfg.githubBackup.repoUrl) continue;
+      const slug = slugFromRepoUrl(cfg.githubBackup.repoUrl);
+      if (!slug) continue;
+      const [owner, name] = slug.split("/");
+      return { owner, name, branch: cfg.githubBackup.branch ?? "main" };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 function repo(): Repo | null {
+  const fromConfig = repoFromLocalConfig();
+  if (fromConfig) return fromConfig;
+
   const slug = process.env.GITHUB_REPO;
   if (!slug || !slug.includes("/")) return null;
   const [owner, name] = slug.split("/");

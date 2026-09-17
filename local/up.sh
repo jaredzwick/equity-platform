@@ -39,6 +39,28 @@ VERBOSE="${VERBOSE:-0}"
 
 : >"$LOG_FILE"
 
+# ── Safety brake — only ever act on the local kind cluster ──────────────
+#
+# This script (and everything it spawns, including the Next.js dev server
+# and the MCP subprocesses that the console starts on chat) MUST target
+# the local kind cluster only. A stray `export KUBECONFIG=…` in the
+# operator's shell (e.g. from typing `kmitek` earlier) would otherwise
+# route these commands at a remote cluster.
+#
+# Two layers:
+#   1. Pin KUBECONFIG to ~/.kube/config so downstream processes ignore any
+#      other kubeconfig path the operator's shell has exported.
+#   2. Wrap `kubectl` with an explicit --context so every call — including
+#      those in subshells (bash -c …) that inherit our exported function —
+#      hits kind-equity-local by name. If that context doesn't exist yet
+#      (first-ever run, before `kind create cluster`), kubectl fails loud
+#      instead of silently hitting whatever the current-context happens
+#      to be.
+unset KUBECONFIG
+export KUBECONFIG="$HOME/.kube/config"
+kubectl() { command kubectl --context="kind-$CLUSTER_NAME" "$@"; }
+export -f kubectl
+
 # quiet <label> <cmd> [args...] — run a command silent unless it fails.
 # On success: prints "  <label>… ✓". On failure: prints "✗", dumps the
 # tail of the log, and exits with the same code. Set VERBOSE=1 to also
