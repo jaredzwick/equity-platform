@@ -60,11 +60,19 @@ function kubeConfig(): KubeConfig {
     return kc;
   }
   const envPath = process.env.KUBECONFIG?.trim();
-  if (envPath) {
+  const defaultPath = path.join(homedir(), ".kube", "config");
+  if (envPath && existsSync(envPath)) {
     kc.loadFromFile(envPath);
     return kc;
   }
-  const defaultPath = path.join(homedir(), ".kube", "config");
+  if (envPath && !existsSync(envPath)) {
+    // Warn once so operators can find the stale export (leftover from a
+    // prior shell session is the usual culprit).
+    console.error(
+      `[equity-mcp] warning: KUBECONFIG="${envPath}" doesn't exist — ` +
+      `falling back to ${defaultPath}. Unset KUBECONFIG in your shell to silence this.`,
+    );
+  }
   if (existsSync(defaultPath)) {
     kc.loadFromFile(defaultPath);
     return kc;
