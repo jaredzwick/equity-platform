@@ -81,3 +81,50 @@ export const VALID_SORTS: readonly DealsSort[] = [
   "asking_desc",
   "rev_desc",
 ];
+
+// Quick-pick location chips for the /deals filter. Values are matched
+// as substrings against Deal.location by the pypes /public/deals/search
+// endpoint (case-insensitive). Kept short and buyer-obvious — deeper
+// city/region searches happen through the free-text "Add region" input.
+export type LocationChip = { value: string; label: string };
+
+export const LOCATION_CHIPS: readonly LocationChip[] = [
+  { value: "Remote", label: "Remote" },
+  { value: "United States", label: "USA" },
+  { value: "California", label: "California" },
+  { value: "Texas", label: "Texas" },
+  { value: "Florida", label: "Florida" },
+  { value: "New York", label: "New York" },
+  { value: "United Kingdom", label: "UK" },
+  { value: "Canada", label: "Canada" },
+];
+
+// Preset asking-price buckets for the filter. Client-only state — these
+// intentionally do NOT emit crawlable <Link>s so they don't cannibalize
+// the hand-authored /deals/under/[slug] pSEO pages. Each bucket sets
+// asking_min/asking_max URL params on the /deals search route.
+export type PriceBucket = {
+  slug: string;
+  label: string;
+  min?: number;
+  max?: number;
+};
+
+export const PRICE_BUCKET_CHIPS: readonly PriceBucket[] = [
+  { slug: "u100k", label: "< $100k", max: 100_000 },
+  { slug: "100k-500k", label: "$100k–$500k", min: 100_000, max: 500_000 },
+  { slug: "500k-1m", label: "$500k–$1M", min: 500_000, max: 1_000_000 },
+  { slug: "1m-5m", label: "$1M–$5M", min: 1_000_000, max: 5_000_000 },
+  { slug: "5m-plus", label: "$5M+", min: 5_000_000 },
+];
+
+// activePriceBucketSlug: reverse-lookup — given the current filter's
+// asking_min/max, find the bucket slug that matches exactly. Used by
+// the UI to render the selected segmented state without duplicating
+// bucket edges.
+export function activePriceBucketSlug(
+  min: number | undefined,
+  max: number | undefined,
+): string | undefined {
+  return PRICE_BUCKET_CHIPS.find((b) => b.min === min && b.max === max)?.slug;
+}

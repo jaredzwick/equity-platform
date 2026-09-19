@@ -95,12 +95,20 @@ export function DealCard({
           {deal.name}
         </Link>
         {deal.location && (
-          <p className="mt-1 text-xs text-white/50">{deal.location}</p>
+          <Link
+            href={`/deals?locations=${encodeURIComponent(deal.location)}`}
+            className="mt-1 inline-flex items-center gap-1 text-xs text-white/50 transition-colors hover:text-yellow-200"
+            aria-label={`Filter deals in ${deal.location}`}
+          >
+            <span aria-hidden>📍</span>
+            {deal.location}
+          </Link>
         )}
       </div>
 
-      {/* Financials grid */}
-      <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-4">
+      {/* Financials grid — 2×2 at all breakpoints so 3-col deal grid at xl
+          doesn't produce orphaned "SDE" cells wrapping to a lonely row. */}
+      <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         {askingPrice && (
           <div>
             <dt className="text-[10px] uppercase tracking-wider text-white/40">

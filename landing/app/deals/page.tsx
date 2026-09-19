@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import { fetchDeals, parseDealFilters } from "@/lib/deals";
+import type { DealFiltersState } from "@/lib/deals-shared";
+import {
+  INDUSTRY_CHIPS,
+  LOCATION_CHIPS,
+  activePriceBucketSlug,
+  PRICE_BUCKET_CHIPS,
+} from "@/lib/deals-shared";
 import { getSession } from "@/lib/session";
-import { fmtCount } from "@/lib/format";
+import { fmtCount, fmtMoney } from "@/lib/format";
 import { DealFilters } from "@/components/deals/DealFilters";
 import { DealBrowseList } from "@/components/deals/DealBrowseList";
 import { DealPagination } from "@/components/deals/DealPagination";
@@ -95,7 +102,7 @@ export default async function DealsPage({
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 pt-24 md:px-6 md:py-12 md:pt-32">
+    <main className="mx-auto max-w-7xl px-4 py-8 pt-24 md:px-6 md:py-12 md:pt-32">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
@@ -104,8 +111,8 @@ export default async function DealsPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(list) }}
       />
-      {/* Hero */}
-      <div className="mb-12 space-y-5 md:space-y-6">
+      {/* Hero — trimmed down so the search bar lands above the fold. */}
+      <div className="mb-6 space-y-4 md:mb-8">
         <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/[0.06] px-3 py-1 text-xs text-yellow-200/90 backdrop-blur">
           <span
             aria-hidden
@@ -136,14 +143,14 @@ export default async function DealsPage({
           )}
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-white/60 md:text-base md:leading-relaxed">
-          Every deal enriched by AI: SDE multiple, red flags, growth signals,
-          and a fit score you can trust. Sign in to save deals to your buy-box
-          and get a weekly digest of new matches.
+          Search by industry, location, or price. Every deal AI-enriched
+          with a fit score, one-paragraph thesis, red flags, and growth
+          signals. Free to browse — sign in to save.
         </p>
       </div>
 
-      {/* Filter panel */}
-      <DealFilters initial={filters} />
+      {/* Filter panel (owns the hero search bar) */}
+      <DealFilters initial={filters} isAuth={isAuth} />
 
       {/* Count + range */}
       <div className="mt-6 mb-4 flex flex-wrap items-baseline justify-between gap-2 px-1">
@@ -165,7 +172,7 @@ export default async function DealsPage({
       {response === null ? (
         <ErrorPanel />
       ) : deals.length === 0 ? (
-        <EmptyPanel />
+        <EmptyPanel filters={filters} />
       ) : (
         <DealBrowseList deals={deals} isAuth={isAuth} />
       )}
@@ -211,8 +218,11 @@ export default async function DealsPage({
         </div>
       </section>
 
-      {/* Sign-up nudge (only for unauth) */}
-      {!isAuth && deals.length > 0 && (
+      {/* Sign-up nudge (only for unauth, no active filters) — when the
+          visitor is filtering, the "Text me matches" CTA lives in the
+          filter bar next to Clear-all. Below-fold nudge only fires for
+          people scrolling the full catalog with no intent captured. */}
+      {!isAuth && deals.length > 0 && !anyFilter(filters) && (
         <div className="mt-8 rounded-2xl border border-yellow-400/30 bg-yellow-400/[0.05] p-6 text-center backdrop-blur">
           <p className="text-lg font-semibold text-white">
             Get scored deals texted to you
@@ -233,6 +243,23 @@ export default async function DealsPage({
   );
 }
 
+function anyFilter(f: DealFiltersState): boolean {
+  return (
+    Boolean(f.q) ||
+    (f.industries?.length ?? 0) > 0 ||
+    (f.locations?.length ?? 0) > 0 ||
+    (f.origins?.length ?? 0) > 0 ||
+    f.asking_min !== undefined ||
+    f.asking_max !== undefined ||
+    f.revenue_min !== undefined ||
+    f.revenue_max !== undefined ||
+    f.profit_min !== undefined ||
+    f.profit_max !== undefined ||
+    f.sde_multiple_max !== undefined ||
+    f.min_business_age_years !== undefined
+  );
+}
+
 function ErrorPanel() {
   return (
     <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-8 text-center">
@@ -246,9 +273,10 @@ function ErrorPanel() {
   );
 }
 
-function EmptyPanel() {
+function EmptyPanel({ filters }: { filters: DealFiltersState }) {
+  const drops = buildFilterDrops(filters);
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur md:p-12">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400/10 text-yellow-300">
         <svg
           viewBox="0 0 24 24"
@@ -266,16 +294,151 @@ function EmptyPanel() {
         No deals match those filters.
       </h3>
       <p className="mt-2 text-sm text-white/60">
-        Try widening one — drop the SDE cap, expand the revenue range, or clear
-        an industry chip. Or{" "}
-        <Link
-          href="/deals"
-          className="font-semibold text-yellow-300 underline underline-offset-2 hover:text-yellow-200"
-        >
-          clear all filters
-        </Link>
-        .
+        Broaden your search by dropping one:
       </p>
+      {drops.length > 0 ? (
+        <div className="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
+          {drops.map((d) => (
+            <Link
+              key={d.href}
+              href={d.href}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1.5 text-xs text-white/90 transition-colors hover:border-yellow-400/40 hover:text-yellow-200"
+            >
+              <span aria-hidden>×</span>
+              Drop {d.label}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-white/60">
+          <Link
+            href="/deals"
+            className="font-semibold text-yellow-300 underline underline-offset-2 hover:text-yellow-200"
+          >
+            Clear all filters
+          </Link>{" "}
+          to see the full inventory.
+        </p>
+      )}
+      {drops.length > 0 && (
+        <p className="mt-6 text-xs text-white/40">
+          Or{" "}
+          <Link
+            href="/deals"
+            className="font-semibold text-white/70 underline underline-offset-2 hover:text-white"
+          >
+            clear all filters
+          </Link>
+          .
+        </p>
+      )}
     </div>
   );
+}
+
+// buildFilterDrops — one Link per active filter that removes it from
+// the URL. Server-rendered so no-JS visitors can still recover from an
+// empty state.
+function buildFilterDrops(
+  f: DealFiltersState,
+): { label: string; href: string }[] {
+  const drops: { label: string; href: string }[] = [];
+  const base = { ...f, page: undefined, page_size: undefined };
+
+  const link = (patch: Partial<DealFiltersState>): string => {
+    const merged = { ...base, ...patch };
+    const qs = filtersToQuery(merged);
+    return qs ? `/deals?${qs}` : "/deals";
+  };
+
+  if (f.q) drops.push({ label: `search "${f.q}"`, href: link({ q: undefined }) });
+  for (const ind of f.industries ?? []) {
+    const chip = INDUSTRY_CHIPS.find((c) => c.value === ind);
+    drops.push({
+      label: chip?.label ?? ind,
+      href: link({
+        industries: (f.industries ?? []).filter((v) => v !== ind),
+      }),
+    });
+  }
+  for (const loc of f.locations ?? []) {
+    const chip = LOCATION_CHIPS.find((c) => c.value === loc);
+    drops.push({
+      label: chip?.label ?? loc,
+      href: link({
+        locations: (f.locations ?? []).filter((v) => v !== loc),
+      }),
+    });
+  }
+  const bucketSlug = activePriceBucketSlug(f.asking_min, f.asking_max);
+  if (bucketSlug) {
+    const b = PRICE_BUCKET_CHIPS.find((x) => x.slug === bucketSlug);
+    drops.push({
+      label: `asking ${b?.label ?? ""}`,
+      href: link({ asking_min: undefined, asking_max: undefined }),
+    });
+  } else {
+    if (f.asking_min !== undefined)
+      drops.push({
+        label: `asking ≥ ${fmtMoney(f.asking_min)}`,
+        href: link({ asking_min: undefined }),
+      });
+    if (f.asking_max !== undefined)
+      drops.push({
+        label: `asking ≤ ${fmtMoney(f.asking_max)}`,
+        href: link({ asking_max: undefined }),
+      });
+  }
+  if (f.revenue_min !== undefined)
+    drops.push({
+      label: `revenue floor`,
+      href: link({ revenue_min: undefined }),
+    });
+  if (f.revenue_max !== undefined)
+    drops.push({
+      label: `revenue cap`,
+      href: link({ revenue_max: undefined }),
+    });
+  if (f.profit_min !== undefined)
+    drops.push({
+      label: `profit floor`,
+      href: link({ profit_min: undefined }),
+    });
+  if (f.profit_max !== undefined)
+    drops.push({
+      label: `profit cap`,
+      href: link({ profit_max: undefined }),
+    });
+  if (f.sde_multiple_max !== undefined)
+    drops.push({
+      label: `SDE cap`,
+      href: link({ sde_multiple_max: undefined }),
+    });
+  if (f.min_business_age_years !== undefined)
+    drops.push({
+      label: `min age`,
+      href: link({ min_business_age_years: undefined }),
+    });
+
+  return drops;
+}
+
+function filtersToQuery(f: DealFiltersState): string {
+  const usp = new URLSearchParams();
+  if (f.q) usp.set("q", f.q);
+  if (f.industries?.length) usp.set("industries", f.industries.join(","));
+  if (f.origins?.length) usp.set("origins", f.origins.join(","));
+  if (f.locations?.length) usp.set("locations", f.locations.join(","));
+  if (f.asking_min !== undefined) usp.set("asking_min", String(f.asking_min));
+  if (f.asking_max !== undefined) usp.set("asking_max", String(f.asking_max));
+  if (f.revenue_min !== undefined) usp.set("revenue_min", String(f.revenue_min));
+  if (f.revenue_max !== undefined) usp.set("revenue_max", String(f.revenue_max));
+  if (f.profit_min !== undefined) usp.set("profit_min", String(f.profit_min));
+  if (f.profit_max !== undefined) usp.set("profit_max", String(f.profit_max));
+  if (f.sde_multiple_max !== undefined)
+    usp.set("sde_multiple_max", String(f.sde_multiple_max));
+  if (f.min_business_age_years !== undefined)
+    usp.set("min_business_age_years", String(f.min_business_age_years));
+  if (f.sort) usp.set("sort", f.sort);
+  return usp.toString();
 }
