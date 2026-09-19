@@ -62,51 +62,79 @@ export default function SignupForm({
     }
   }
 
+  const errorId = "signup-error";
   return (
     <form
       onSubmit={onSubmit}
       className="flex w-full max-w-md flex-col gap-3"
       noValidate
+      aria-describedby={error ? errorId : undefined}
     >
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          name="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
-          autoComplete="name"
-          required
-          disabled={busy}
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/40 backdrop-blur focus:border-yellow-400/60 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 disabled:opacity-60"
-        />
-        <input
-          name="phone"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Mobile number"
-          autoComplete="tel"
-          required
-          disabled={busy}
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/40 backdrop-blur focus:border-yellow-400/60 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 disabled:opacity-60"
-        />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <label
+            htmlFor="signup-name"
+            className="text-[11px] font-semibold uppercase tracking-widest text-white/60"
+          >
+            Your name <span className="text-yellow-300" aria-hidden>*</span>
+            <span className="sr-only">required</span>
+          </label>
+          <input
+            id="signup-name"
+            name="name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Sam Buyer"
+            autoComplete="name"
+            required
+            aria-required
+            aria-invalid={error?.toLowerCase().includes("name") || undefined}
+            disabled={busy}
+            className="min-w-0 rounded-lg border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/40 backdrop-blur focus:border-yellow-400/60 focus:outline-none disabled:opacity-60"
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <label
+            htmlFor="signup-phone"
+            className="text-[11px] font-semibold uppercase tracking-widest text-white/60"
+          >
+            Mobile number <span className="text-yellow-300" aria-hidden>*</span>
+            <span className="sr-only">required</span>
+          </label>
+          <input
+            id="signup-phone"
+            name="phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+1 555 123 4567"
+            autoComplete="tel"
+            inputMode="tel"
+            required
+            aria-required
+            aria-invalid={error?.toLowerCase().includes("phone") || undefined}
+            disabled={busy}
+            className="min-w-0 rounded-lg border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/40 backdrop-blur focus:border-yellow-400/60 focus:outline-none disabled:opacity-60"
+          />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
           disabled={busy}
+          aria-busy={busy}
           className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg shadow-orange-500/40 transition hover:shadow-orange-500/70 disabled:opacity-60"
         >
           {busy ? "Sending…" : ctaLabel}
           {!busy && <span aria-hidden>→</span>}
         </button>
-        <p className="text-xs text-white/40">
-          No spam. Reply STOP anytime.
+        <p className="text-xs text-white/50">
+          Two texts a week when a deal in your buy-box lands. Reply STOP anytime.
         </p>
       </div>
       {error && (
-        <p className="text-xs text-red-300" role="alert">
+        <p id={errorId} className="text-xs text-red-300" role="alert">
           {error}
         </p>
       )}

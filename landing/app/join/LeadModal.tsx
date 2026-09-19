@@ -67,7 +67,9 @@ export default function LeadModal({ open, onClose }: Props) {
     if (fields.name.trim().length < 2)
       errs.name = "Please enter your name.";
     const email = fields.email.trim();
-    if (email.length < 5 || !/.+@.+\..+/.test(email))
+    // Tighter than the "any three parts split by @ and ." pattern so
+    // "a@b.c" fails: local + @ + host + . + 2-char TLD minimum.
+    if (email.length < 6 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))
       errs.email = "Please enter a valid email.";
     const digits = fields.phone.replace(/\D/g, "");
     if (digits.length < 10)
@@ -331,13 +333,22 @@ const Field = forwardRef<HTMLInputElement, FieldProps>(function LeadField(
   ref,
 ) {
   const id = `join-field-${name}`;
+  const errorId = `${id}-error`;
   return (
     <div>
       <label
         htmlFor={id}
-        className="mb-1 block text-xs font-medium text-white/60"
+        className="mb-1 block text-xs font-medium text-white/70"
       >
-        {label} {required && <span className="text-yellow-400">*</span>}
+        {label}{" "}
+        {required && (
+          <>
+            <span className="text-yellow-300" aria-hidden>
+              *
+            </span>
+            <span className="sr-only">required</span>
+          </>
+        )}
       </label>
       <input
         ref={ref}
@@ -347,17 +358,23 @@ const Field = forwardRef<HTMLInputElement, FieldProps>(function LeadField(
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
+        aria-required={required || undefined}
         autoComplete={autoComplete}
         inputMode={inputMode}
         placeholder={placeholder}
         aria-invalid={error ? true : undefined}
-        className={`w-full rounded-lg border bg-black/40 px-3.5 py-2.5 text-[15px] text-white placeholder:text-white/30 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+        aria-describedby={error ? errorId : undefined}
+        className={`w-full rounded-lg border bg-black/40 px-3.5 py-2.5 text-[15px] text-white placeholder:text-white/30 transition-colors focus:outline-none ${
           error
             ? "border-red-500/60"
-            : "border-white/10 focus:border-yellow-400/50"
+            : "border-white/10 focus:border-yellow-400/60"
         }`}
       />
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && (
+        <p id={errorId} className="mt-1 text-xs text-red-300" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 });
