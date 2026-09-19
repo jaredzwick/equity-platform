@@ -34,25 +34,28 @@ export default async function HomePage({ searchParams }: Props) {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
               </span>
-              🏎️ DEGENERATE MODE: DEAL SOURCING
-              <span className="text-yellow-200/40">·</span>
-              <span>💎🙌</span>
+              Live · ~100 new listings scored every day
             </div>
 
             <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight text-white md:text-5xl lg:text-6xl">
-              Stop yolo&rsquo;ing SPY puts.{" "}
+              Every business for sale.{" "}
               <span className="bg-gradient-to-br from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent">
-                Start acquiring cash-flowing businesses that print every month.
+                Read by Claude. Ranked by fit.
               </span>
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
-              LamboApp screens{" "}
-              <span className="text-white">~100 businesses for sale every day</span>{" "}
-              across 30+ brokers. Our AI reads every listing, flags the scams, scores the
-              winners, and hands you a 1-paragraph thesis.{" "}
-              <span className="text-yellow-300">When lambo?</span> When you stop
-              paper-handing SPY and start acquiring SMBs at 3x SDE.
+              LamboApp aggregates{" "}
+              <span className="text-white">~100 new listings per day</span>{" "}
+              from 30+ broker networks — BizBuySell, Flippa, Empire Flippers,
+              Acquire, Quiet Light — and has an LLM read every one for
+              SDE multiple, red flags, growth signals, and a one-paragraph
+              thesis. Filter, save, and message from a single feed.
+            </p>
+
+            <p className="mt-3 max-w-xl text-sm italic text-white/40">
+              Also known, in some corners of the internet, as{" "}
+              <span className="text-yellow-300/80">degenerate mode: deal sourcing</span>.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center gap-4">
