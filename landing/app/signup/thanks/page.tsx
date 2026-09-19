@@ -46,14 +46,6 @@ export default function ThanksPage() {
           Read the docs
         </Link>
       </div>
-
-      <div className="mt-16 text-sm text-white/50">
-        Want to run your own LamboApp?{" "}
-        <Link href="/docs/self-hosting" className="text-yellow-300 underline">
-          Self-hosting guide
-        </Link>
-        {" — "}the whole platform is open source (BSL 1.1).
-      </div>
     </main>
   );
 }

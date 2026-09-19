@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import SignupForm from "@/components/SignupForm";
 
 const SITE_URL = "https://www.lamboapp.com";
@@ -37,29 +36,13 @@ export default function SignupPage() {
 
       <SignupForm source="signup-page" ctaLabel="Get on the list" />
 
-      <section className="mt-16 grid gap-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:grid-cols-2">
-        <div>
-          <h2 className="text-sm font-semibold text-white">What you get</h2>
-          <ul className="mt-3 space-y-2 text-sm text-white/70">
-            <li>· AI thesis + red flags on every deal that hits the feed</li>
-            <li>· One-paragraph fit score against the 3× SDE archetype</li>
-            <li>· Text alerts when a listing matches your buy-box</li>
-          </ul>
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold text-white">Want to self-host?</h2>
-          <p className="mt-3 text-sm text-white/70">
-            The whole platform is{" "}
-            <Link href="/docs/licensing" className="text-yellow-300 underline">
-              open source (BSL 1.1)
-            </Link>
-            . Read the{" "}
-            <Link href="/docs/quickstart" className="text-yellow-300 underline">
-              quickstart
-            </Link>{" "}
-            and boot it locally in 3 minutes.
-          </p>
-        </div>
+      <section className="mt-16 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+        <h2 className="text-sm font-semibold text-white">What you get</h2>
+        <ul className="mt-3 space-y-2 text-sm text-white/70">
+          <li>· AI thesis + red flags on every deal that hits the feed</li>
+          <li>· One-paragraph fit score against the 3× SDE archetype</li>
+          <li>· Text alerts when a listing matches your buy-box</li>
+        </ul>
       </section>
     </main>
   );

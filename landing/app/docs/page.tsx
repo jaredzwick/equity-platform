@@ -46,9 +46,9 @@ export default async function DocsIndexPage() {
           How the machine works.
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-white/70">
-          A one-command Kubernetes platform with an AI deal-sourcing layer on top.
-          Everything here is open source (BSL 1.1 → Apache 2.0 in 2030). Self-host
-          it forever.
+          How the deal-sourcing layer reads every listing, how the fit
+          score is computed, and how the platform behind it all fits
+          together.
         </p>
       </header>
 
