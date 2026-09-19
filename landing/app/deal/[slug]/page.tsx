@@ -54,10 +54,14 @@ type PublicDeal = {
 };
 
 async function fetchPublicDeal(slug: string): Promise<PublicDeal | null> {
+  // 4s upstream budget — long enough for a cold ISR miss with a warm
+  // API, short enough that a hung pypes deploy doesn't gate a whole
+  // SSR render on a request that will fail anyway. AbortSignal.timeout
+  // is Node 18.17+ and Next 15 runtime supports it.
   try {
     const res = await fetch(
       `${PYPES_API_URL}/lamboapp/public/deals/${encodeURIComponent(slug)}`,
-      { next: { revalidate: 3600 } },
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(4000) },
     );
     if (res.status === 404) return null;
     if (!res.ok) return null;
