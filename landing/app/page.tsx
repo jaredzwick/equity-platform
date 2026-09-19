@@ -169,70 +169,54 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </AnimatedSection>
 
-      {/* TESTIMONIALS */}
+      {/* PROOF STRIP — replaces the previous "Real Testimonials™"
+          section which ran fabricated quotes ("u/DeepFuckingValueSMB",
+          "Chad Thundercock") with self-labelled disclaimers. The jokes
+          undermined every real product claim next to them for the
+          serious buyer we're actually courting. Replacing with numbers
+          we can defend: broker coverage, listings/day, and how the fit
+          score gets computed. Bring real quotes back here when we can
+          source three that will sign off on attribution. */}
       <AnimatedSection className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
         <div className="mx-auto max-w-2xl text-center">
           <div className="text-xs font-mono uppercase tracking-widest text-yellow-400">
-            Real Testimonials™
+            How the numbers work
           </div>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">
-            The people have{" "}
-            <span className="bg-gradient-to-br from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent">spoken</span>
+            Every deal, read the{" "}
+            <span className="bg-gradient-to-br from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent">
+              same way
+            </span>
             .
           </h2>
-          <p className="mt-4 text-sm text-white/40">
-            (Legally we are required to tell you these are dramatizations. Any resemblance to persons living, dead, or currently margin-called is coincidental.)
+          <p className="mt-4 text-sm text-white/60">
+            No paid placements, no seller-side edits, no ranking bumps for
+            featured listings. Same Haiku prompt against every listing,
+            same rubric, same output shape — so a 8.4 on a laundromat is
+            comparable to an 8.4 on a SaaS.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          <Testimonial
-            name="u/DeepFuckingValueSMB"
-            title="Search-fund apex predator"
-            avatarBg="linear-gradient(135deg,#facc15,#f97316)"
-            avatarText="🦍"
-            quote="Bought a car wash at 2.8x SDE last month. Wife&rsquo;s boyfriend now respects me."
-            disclaimer="Not a real Reddit user. Wife&rsquo;s boyfriend approval not guaranteed."
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 md:grid-cols-4">
+          <ProofStat
+            value="30+"
+            label="Broker networks aggregated"
+            detail="BizBuySell, Flippa, Empire Flippers, Acquire, Quiet Light, and long-tail regionals."
           />
-          <Testimonial
-            name="Chad Thundercock"
-            title="Ex-0DTE degenerate, now HVAC magnate"
-            avatarBg="linear-gradient(135deg,#f97316,#ef4444)"
-            avatarText="💪"
-            quote="Sold my 0DTE portfolio. Bought a laundromat. Monthly cash flow: $47k. Robinhood notifications received: zero. Sleep quality: elite."
-            disclaimer="Chad is a composite character. The laundromat is metaphorical. Sleep quality varies."
+          <ProofStat
+            value="~100"
+            label="New listings scored per day"
+            detail="Sourced hourly, thesis + red flags + growth signals written on each one."
           />
-          <Testimonial
-            name="Anon on a search-fund Discord"
-            title="Almost-victim of a bad wire"
-            avatarBg="linear-gradient(135deg,#8b5cf6,#ec4899)"
-            avatarText="👻"
-            quote="The AI flagged 6 red flags in a listing I was about to wire on. Saved me $1.4M. I offered Jared my firstborn."
-            disclaimer="Firstborn offering declined. Venmo also acceptable."
+          <ProofStat
+            value="0–10"
+            label="Fit score, single rubric"
+            detail="Buy signal ≥ 7, Investigate 5–7, Pass below. Comparable across industries."
           />
-          <Testimonial
-            name="HVACGigaChad"
-            title="Tesla Y → Lambo Urus in 18mo"
-            avatarBg="linear-gradient(135deg,#eab308,#facc15)"
-            avatarText="🏎️"
-            quote="Went from Tesla Y to Lambo Urus in 18 months. All I did was let the machine tell me which listings were actually printing. My accountant is scared."
-            disclaimer="Vehicles depicted are stock photos. Lambo delivery is not included with signup."
-          />
-          <Testimonial
-            name="Grandma Judith, 74"
-            title="Former day-trader, current portfolio operator"
-            avatarBg="linear-gradient(135deg,#22d3ee,#8b5cf6)"
-            avatarText="👵"
-            quote="I asked my grandson what &lsquo;SDE&rsquo; means and now I own three self-storage facilities. The AI does the reading for me. I do the depositing."
-            disclaimer="Grandma Judith is not real. Self-storage facilities can, however, be very real."
-          />
-          <Testimonial
-            name="Anonymous LP"
-            title="Wrote a check they will not confirm"
-            avatarBg="linear-gradient(135deg,#374151,#111827)"
-            avatarText="🕴️"
-            quote="Cannot legally comment on which fund I run. Can confirm every acquisition target we&rsquo;ve closed in Q3 was surfaced by this thing before our associates got to it."
-            disclaimer="LP has requested anonymity. LP is also completely fabricated."
+          <ProofStat
+            value="$0"
+            label="To browse the corpus"
+            detail="Filters and pagination free. Save + text alerts land behind a two-field signup."
           />
         </div>
       </AnimatedSection>
@@ -322,40 +306,24 @@ export default async function HomePage({ searchParams }: Props) {
   );
 }
 
-function Testimonial({
-  name,
-  title,
-  quote,
-  disclaimer,
-  avatarBg,
-  avatarText,
+function ProofStat({
+  value,
+  label,
+  detail,
 }: {
-  name: string;
-  title: string;
-  quote: string;
-  disclaimer: string;
-  avatarBg: string;
-  avatarText: string;
+  value: string;
+  label: string;
+  detail: string;
 }) {
   return (
-    <div className="relative flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur">
-      <div className="mb-4 flex items-center gap-3">
-        <div
-          className="flex h-10 w-10 items-center justify-center rounded-full text-lg"
-          style={{ background: avatarBg }}
-          aria-hidden
-        >
-          {avatarText}
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-white">{name}</div>
-          <div className="text-xs text-white/50">{title}</div>
-        </div>
+    <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur">
+      <div className="text-3xl font-bold text-white md:text-4xl">
+        <span className="bg-gradient-to-br from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent">
+          {value}
+        </span>
       </div>
-      <p className="flex-1 text-sm leading-relaxed text-white/80">&ldquo;{quote}&rdquo;</p>
-      <p className="mt-4 border-t border-white/5 pt-3 text-[11px] italic text-white/40">
-        * {disclaimer}
-      </p>
+      <div className="mt-2 text-sm font-semibold text-white">{label}</div>
+      <p className="mt-2 text-xs leading-relaxed text-white/60">{detail}</p>
     </div>
   );
 }
