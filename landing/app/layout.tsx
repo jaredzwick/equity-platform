@@ -142,14 +142,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
-        {/* StartupBar widget — 36px directory bar pinned to the top.
-            Auto-shifts fixed/sticky headers; if the site header sits under
-            it, add `top: 36px` to the header rule as a manual fallback. */}
-        <script
-          async
-          src="https://startupbar.co/widget/loader.js"
-          data-startup-id="f8409de5-2f65-41c2-b0ad-7314e93f13fb"
-        />
       </head>
       <body className="min-h-screen flex flex-col overflow-x-hidden">
         <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-black/40 backdrop-blur-xl supports-[backdrop-filter]:bg-black/30">
