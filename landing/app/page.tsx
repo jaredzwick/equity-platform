@@ -6,6 +6,7 @@ import HowItWorks from "@/components/HowItWorks";
 import HeroSceneClient from "@/components/HeroSceneClient";
 import AuthErrorBanner from "@/components/AuthErrorBanner";
 import TerminalPanel from "@/components/TerminalPanel";
+import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
 
@@ -60,28 +61,25 @@ export default async function HomePage({ searchParams }: Props) {
 
             <div className="mt-10 flex flex-wrap items-center gap-4">
               {signedIn ? (
-                <Link
+                <Button
                   href="/onboarding"
-                  className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg shadow-orange-500/40 transition hover:shadow-orange-500/70"
+                  size="lg"
+                  trailingIcon={<ArrowRight />}
                 >
                   Continue printing
-                  <ArrowRight />
-                </Link>
+                </Button>
               ) : (
-                <Link
+                <Button
                   href="/join"
-                  className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg shadow-orange-500/40 transition hover:shadow-orange-500/70"
+                  size="lg"
+                  trailingIcon={<ArrowRight />}
                 >
                   Get the free playbook
-                  <ArrowRight />
-                </Link>
+                </Button>
               )}
-              <Link
-                href="/docs"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
-              >
+              <Button href="/docs" variant="secondary" size="lg">
                 How the machine works
-              </Link>
+              </Button>
             </div>
 
             {/* Sell-side wedge — quiet secondary CTA under the primary

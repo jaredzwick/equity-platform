@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
 
 type Props = {
   source?: string; // free-form label — "hero", "footer", "signup-page"
@@ -120,15 +121,14 @@ export default function SignupForm({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button
+        <Button
           type="submit"
           disabled={busy}
-          aria-busy={busy}
-          className="group inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg shadow-orange-500/40 transition hover:shadow-orange-500/70 disabled:opacity-60"
+          loading={busy}
+          trailingIcon={busy ? undefined : <span>→</span>}
         >
           {busy ? "Sending…" : ctaLabel}
-          {!busy && <span aria-hidden>→</span>}
-        </button>
+        </Button>
         <p className="text-xs text-white/50">
           Two texts a week when a deal in your buy-box lands. Reply STOP anytime.
         </p>
