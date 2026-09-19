@@ -19,6 +19,20 @@ const SITE_URL = "https://www.lamboapp.com";
 const PYPES_API_URL =
   process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
 
+// Cutover for the enricher body-length raise (200 → 1500 chars). Any deal
+// published before this timestamp was written under the old thin-body
+// prompt — Google was rejecting the resulting pages en masse (7,555
+// "Discovered — currently not indexed" in GSC on 2026-09-16). We stop
+// sitemapping them so Google isn't asked to re-evaluate low-quality URLs;
+// the per-page noindex in /deal/[slug] then drops them from the index queue.
+// New enrichments (published_at >= this) go through the 600-900 word
+// prompt and are safe to sitemap.
+//
+// Follow-up: the un-publish SQL migration in docs will let the enricher
+// re-process the old rows under the new prompt, at which point they'll
+// have a fresh published_at above the cutover and re-enter the sitemap.
+const SEO_GATE_CUTOVER_MS = Date.UTC(2026, 8, 17); // 2026-09-17 UTC
+
 export const revalidate = 3600;
 
 type ApiRow = { slug: string; published_at: number };
@@ -132,12 +146,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const deals = await fetchAllDealSlugs();
-  const dealRoutes: MetadataRoute.Sitemap = deals.map((d) => ({
-    url: `${SITE_URL}/deal/${d.slug}`,
-    lastModified: d.published_at ? new Date(d.published_at * 1000) : new Date(),
-    changeFrequency: "weekly",
-    priority: 0.8,
-  }));
+  const dealRoutes: MetadataRoute.Sitemap = deals
+    .filter((d) => d.published_at && d.published_at * 1000 >= SEO_GATE_CUTOVER_MS)
+    .map((d) => ({
+      url: `${SITE_URL}/deal/${d.slug}`,
+      lastModified: new Date(d.published_at * 1000),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
 
   return [
     ...staticRoutes,
