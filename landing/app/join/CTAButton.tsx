@@ -14,7 +14,7 @@ type Props = {
 };
 
 export default function CTAButton({
-  label = "Send Me the Free Playbook →",
+  label = "Get the free playbook →",
   variant = "primary",
   className = "",
 }: Props) {

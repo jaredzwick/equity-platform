@@ -214,11 +214,11 @@ export default function LeadModal({ open, onClose }: Props) {
                 data-testid="lead-submit"
                 className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3.5 text-base font-bold uppercase tracking-wide text-black shadow-lg shadow-orange-500/30 transition-all hover:shadow-orange-500/60 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 focus:ring-offset-2 focus:ring-offset-[#0b0b0e]"
               >
-                Email Me the Playbook →
+                Send me the playbook →
               </button>
 
               <p className="pt-1 text-center text-[11px] text-white/40">
-                No spam. Reply STOP anytime.
+                One email with the PDF, then quiet. Reply STOP anytime.
               </p>
             </form>
 

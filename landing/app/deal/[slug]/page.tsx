@@ -276,7 +276,7 @@ export default async function DealPage({ params }: PageProps) {
               href="/join"
               className="inline-flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white/70 underline underline-offset-4 transition hover:text-yellow-200"
             >
-              Or grab the free 90-day playbook
+              Or get the free playbook
             </Link>
           </div>
         </section>
