@@ -82,10 +82,15 @@ export const VALID_SORTS: readonly DealsSort[] = [
   "rev_desc",
 ];
 
-// Quick-pick location chips for the /deals filter. Values are matched
-// as substrings against Deal.location by the pypes /public/deals/search
-// endpoint (case-insensitive). Kept short and buyer-obvious — deeper
-// city/region searches happen through the free-text "Add region" input.
+// Quick-pick location chips for the /deals filter. Values are the
+// exact-case tokens sent to the pypes /public/deals/search `locations`
+// param — the backend matches them as substrings but is case-sensitive
+// in practice, so we pin the casing here to avoid the "nevada" vs
+// "Nevada" zero-result surprise a free-form input would create.
+//
+// List biased toward the US SMB acquisition market (top-15 states by
+// small-business density), with Remote, Canada, UK, and EU included
+// for the international corpus.
 export type LocationChip = { value: string; label: string };
 
 export const LOCATION_CHIPS: readonly LocationChip[] = [
@@ -95,8 +100,25 @@ export const LOCATION_CHIPS: readonly LocationChip[] = [
   { value: "Texas", label: "Texas" },
   { value: "Florida", label: "Florida" },
   { value: "New York", label: "New York" },
-  { value: "United Kingdom", label: "UK" },
+  { value: "Illinois", label: "Illinois" },
+  { value: "Pennsylvania", label: "Pennsylvania" },
+  { value: "Ohio", label: "Ohio" },
+  { value: "Georgia", label: "Georgia" },
+  { value: "North Carolina", label: "North Carolina" },
+  { value: "Michigan", label: "Michigan" },
+  { value: "New Jersey", label: "New Jersey" },
+  { value: "Virginia", label: "Virginia" },
+  { value: "Washington", label: "Washington" },
+  { value: "Arizona", label: "Arizona" },
+  { value: "Massachusetts", label: "Massachusetts" },
+  { value: "Tennessee", label: "Tennessee" },
+  { value: "Colorado", label: "Colorado" },
+  { value: "Nevada", label: "Nevada" },
+  { value: "Oregon", label: "Oregon" },
+  { value: "Utah", label: "Utah" },
   { value: "Canada", label: "Canada" },
+  { value: "United Kingdom", label: "UK" },
+  { value: "European Union", label: "EU" },
 ];
 
 // Preset asking-price buckets for the filter. Client-only state — these

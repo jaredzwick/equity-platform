@@ -265,11 +265,10 @@ export function DealFilters({
               </Chip>
             ))}
           </ChipRow>
-          <AddLocationInput
-            onAdd={(loc) => {
-              if (!activeLocations.has(loc)) toggleList("locations")(loc);
-            }}
-          />
+          <p className="mt-2 text-[11px] text-white/40">
+            Need a city? Type it into the search bar above — it matches
+            location text too.
+          </p>
         </FilterSection>
 
         <FilterSection label="Asking price">
@@ -344,11 +343,10 @@ export function DealFilters({
                 </Chip>
               ))}
             </ChipRow>
-            <AddLocationInput
-              onAdd={(loc) => {
-                if (!activeLocations.has(loc)) toggleList("locations")(loc);
-              }}
-            />
+            <p className="mt-2 text-[11px] text-white/40">
+              Looking for a specific city? Type it into the search bar
+              above the filters.
+            </p>
           </FilterSection>
 
           <FilterSection label="Origin">
@@ -443,29 +441,6 @@ function HeroSearch({
         </button>
       )}
     </div>
-  );
-}
-
-function AddLocationInput({ onAdd }: { onAdd: (loc: string) => void }) {
-  const [val, setVal] = useState("");
-  return (
-    <input
-      type="text"
-      value={val}
-      onChange={(e) => setVal(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          const v = val.trim();
-          if (v) {
-            onAdd(v);
-            setVal("");
-          }
-        }
-      }}
-      placeholder="Add a state, city, or country and press Enter"
-      className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-yellow-400/60 focus:outline-none"
-    />
   );
 }
 
