@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import DealThesis from "@/components/DealThesis";
+import { SaveDealCTA } from "@/components/deals/SaveDealCTA";
+import { getSession } from "@/lib/session";
 
 // SSR-rendered SEO landing page for one enriched deal. Backed by
 // GET /lamboapp/public/deals/{slug} on the pypes.dev Go API (mirrors the
@@ -12,6 +14,13 @@ import DealThesis from "@/components/DealThesis";
 const PYPES_API_URL =
   process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
 const SITE_URL = "https://www.lamboapp.com";
+
+// Minimum body_html length (chars) before we're willing to be indexed by Google.
+// Matches the enricher's BODY_HTML_MIN_CHARS gate in n8n workflow
+// t5xCcyHPhqJd3LMi so any deal that squeaks past one is caught by the other.
+// Set from GSC evidence 2026-09-16: 7,555 pages "Discovered — not indexed"
+// vs 3 indexed was Google flagging thin per-deal content.
+const MIN_BODY_HTML_CHARS = 1500;
 
 // Revalidate once per hour. Deal enrichment writes once; the row itself
 // rarely changes after publish. ISR keeps the page fast + fresh without
@@ -71,10 +80,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     deal.seo_description ||
     `${deal.name} — asking ${money(deal.asking_price)}, ${deal.origin} business. AI fit score: ${deal.deal_fit_score ?? "N/A"}.`;
   const url = `${SITE_URL}/deal/${deal.slug}`;
+  const hasSubstantiveBody =
+    typeof deal.seo_body_html === "string" &&
+    deal.seo_body_html.length >= MIN_BODY_HTML_CHARS;
   return {
     title,
     description,
     alternates: { canonical: url },
+    robots: hasSubstantiveBody
+      ? { index: true, follow: true }
+      : { index: false, follow: true },
     openGraph: {
       title,
       description,
@@ -97,8 +112,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function DealPage({ params }: PageProps) {
   const { slug } = await params;
-  const deal = await fetchPublicDeal(slug);
+  // Parallelize the deal fetch and the session read — session pulls
+  // from an iron-session cookie, so on a cold visit it's cheap; on a
+  // logged-in visit we need it to render the correct primary CTA.
+  const [deal, session] = await Promise.all([
+    fetchPublicDeal(slug),
+    getSession().catch(() => null),
+  ]);
   if (!deal) notFound();
+  const isAuth = Boolean(session?.login);
 
   const fitScore = deal.deal_fit_score ?? 0;
   const verdict =
@@ -234,34 +256,34 @@ export default async function DealPage({ params }: PageProps) {
         )}
 
         <section className="mt-16 rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-500/15 via-orange-500/10 to-red-500/10 p-8">
-          <h2 className="text-2xl font-semibold text-white">Ready to make a move?</h2>
+          <h2 className="text-2xl font-semibold text-white">
+            Interested? Pin it before you forget.
+          </h2>
           <p className="mt-2 text-white/70">
-            Fit score is a starting point, not a green light. The 90-day playbook is the
-            next step — credit stack, financing sources, and the exact cadence to get from
-            "interesting listing" to signed LOI without wiring on vibes.
+            Save this deal to your list and get notified when the broker
+            updates the listing, drops the price, or new comparable deals
+            hit the feed.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/join"
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
-            >
-              Get the free 90-day playbook →
-            </Link>
+            <SaveDealCTA dealId={deal.id} slug={deal.slug} isAuth={isAuth} />
             <Link
               href="/deals"
               className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
             >
               ← See more deals
             </Link>
+            <Link
+              href="/join"
+              className="inline-flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white/70 underline underline-offset-4 transition hover:text-yellow-200"
+            >
+              Or grab the free 90-day playbook
+            </Link>
           </div>
         </section>
 
-        <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/40">
-          <strong className="text-white/60">Not financial advice.</strong> LamboApp scrapes public
-          broker listings, runs Claude Haiku across them, and surfaces the ones our rubric ranks
-          highly. The thesis, red flags, and growth signals are AI-generated from the listing text
-          alone. Numbers come from the broker (unverified). Do your own diligence, hire a lawyer,
-          hire an accountant, don&rsquo;t wire until an LOI + QoE clears.
+        <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/50">
+          Broker-supplied numbers, unverified. Thesis and red flags are
+          AI-generated from the listing text. Do your own QoE before you wire.
         </div>
       </article>
     </>
