@@ -133,6 +133,7 @@ export default function SellListingForm({
   const [form, setForm] = useState<FormState>(initialForm);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [uploading, setUploading] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -322,22 +323,38 @@ export default function SellListingForm({
         setError(`"${file.name}" exceeds the 25MB limit`);
         return;
       }
+      // Mark this file as in-flight so the UI can render a placeholder
+      // row (name + spinner) instead of leaving the user staring at a
+      // silent picker for the 5–30s each upload takes. The name is a
+      // stable per-upload key; if the user picks two files with the
+      // same name, we differentiate in the row order.
+      setUploading((prev) => [...prev, file.name]);
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch(
-        `${apiURL}/lamboapp/sellers/drafts/${draft.draft_id}/files`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${draft.session_token}` },
-          body: fd,
-        },
-      );
-      if (!res.ok) {
-        setError(`"${file.name}" — ${await safeReadError(res)}`);
-        return;
+      try {
+        const res = await fetch(
+          `${apiURL}/lamboapp/sellers/drafts/${draft.draft_id}/files`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${draft.session_token}` },
+            body: fd,
+          },
+        );
+        if (!res.ok) {
+          setError(`"${file.name}" — ${await safeReadError(res)}`);
+          return;
+        }
+        const body = await res.json();
+        setFiles((prev) => [...prev, body.file]);
+      } finally {
+        // Remove one occurrence of this name — same-name collisions
+        // still resolve because each call pushes and pops one entry.
+        setUploading((prev) => {
+          const idx = prev.indexOf(file.name);
+          if (idx < 0) return prev;
+          return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+        });
       }
-      const body = await res.json();
-      setFiles((prev) => [...prev, body.file]);
     },
     [apiURL, draft],
   );
@@ -446,7 +463,12 @@ export default function SellListingForm({
               />
             </Field>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          {/* Financial fields at md:grid-cols-2 (was grid-cols-4) —
+              the 4-col layout stacked to a 2000px+ scroll on 375px
+              phones with no visible submit until the very bottom, per
+              the sprint 2 audit finding. 2 cols keeps each row scannable
+              at mobile without losing tablet density. */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Asking price (USD)" required>
               <TextInput
                 value={form.askingPrice}
@@ -594,12 +616,13 @@ export default function SellListingForm({
           </div>
 
           <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-white/[0.02] p-10 text-center transition hover:border-yellow-400/50 hover:bg-white/[0.04]">
-            <span className="text-3xl">📎</span>
+            <span className="text-3xl" aria-hidden>📎</span>
             <span className="mt-2 text-sm font-medium text-white">
               Click to choose files
             </span>
             <span className="mt-1 text-xs text-white/50">
               {files.length} of 10 uploaded
+              {uploading.length > 0 && ` · ${uploading.length} in progress`}
             </span>
             <input
               type="file"
@@ -609,17 +632,23 @@ export default function SellListingForm({
               onChange={async (e) => {
                 const list = e.target.files;
                 if (!list) return;
+                // Kick uploads in parallel so a 10-file batch doesn't
+                // serialize into a 5-minute wall of nothing. The API
+                // caps at 10 files total so upstream concurrency is
+                // bounded already.
+                const jobs: Promise<void>[] = [];
                 for (let i = 0; i < list.length; i++) {
                   if (files.length + i >= 10) break;
                   const f = list.item(i);
-                  if (f) await uploadFile(f);
+                  if (f) jobs.push(uploadFile(f));
                 }
                 e.target.value = "";
+                await Promise.all(jobs);
               }}
             />
           </label>
 
-          {files.length > 0 && (
+          {(files.length > 0 || uploading.length > 0) && (
             <ul className="space-y-2">
               {files.map((f) => (
                 <li
@@ -638,6 +667,24 @@ export default function SellListingForm({
                   >
                     Remove
                   </button>
+                </li>
+              ))}
+              {uploading.map((name, i) => (
+                <li
+                  key={`pending-${i}-${name}`}
+                  className="flex items-center gap-3 rounded-lg border border-yellow-400/30 bg-yellow-400/[0.03] px-4 py-3 text-sm"
+                  aria-live="polite"
+                >
+                  <span
+                    className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-yellow-400/30 border-t-yellow-300"
+                    aria-hidden
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-white/90">{name}</div>
+                    <div className="text-xs text-yellow-200/70">
+                      Uploading…
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
