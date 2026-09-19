@@ -59,3 +59,17 @@ pre, code {
     scroll-behavior: auto;
   }
 }
+
+/* Global keyboard-focus indicator. Every focusable element gets a
+   solid 2px yellow-300 outline with a 2px dark offset so keyboard
+   users can always see focus even when a Tailwind ring class is
+   missing or uses low-opacity yellow (which was failing 3:1 on the
+   dark background — the specific accessibility failure surfaced in
+   the sprint 2 audit). focus-visible skips the outline for mouse
+   clicks so this doesn't add noise for pointer users. */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid #fde047;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.6);
+  border-radius: inherit;
+}
