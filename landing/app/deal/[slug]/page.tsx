@@ -3,13 +3,28 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import DealThesis from "@/components/DealThesis";
 import { SaveDealCTA } from "@/components/deals/SaveDealCTA";
+import {
+  MediaCarousel,
+  type MediaItem,
+} from "@/components/deals/MediaCarousel";
+import {
+  BenchmarkBar,
+  type IndustryBenchmark,
+} from "@/components/deals/BenchmarkBar";
+import {
+  ComparablesStrip,
+  type ComparableDeal,
+} from "@/components/deals/ComparablesStrip";
+import { DealMap } from "@/components/deals/DealMap";
+import { TrustBar } from "@/components/deals/TrustBar";
 import { getSession } from "@/lib/session";
 
 // SSR-rendered SEO landing page for one enriched deal. Backed by
 // GET /lamboapp/public/deals/{slug} on the pypes.dev Go API (mirrors the
 // careerjumpship /jobs/[slug] pattern — no direct DB access from Next.js).
-// Rendered with Product JSON-LD + rich metadata so search engines index it,
-// and pinged via Indexing API + IndexNow from n8n after the enricher writes.
+// Rendered with Article + BreadcrumbList JSON-LD + rich metadata so search
+// engines index it, and pinged via Indexing API + IndexNow from n8n after
+// the enricher writes.
 
 const PYPES_API_URL =
   process.env.NEXT_PUBLIC_PYPES_API_URL ?? "https://api.pypes.dev";
@@ -45,12 +60,22 @@ type PublicDeal = {
   location?: string;
   deal_fit_score?: number;
   thesis?: string;
+  thesis_label?: string;
   red_flags?: string[];
   growth_signals?: string[];
   seo_title?: string;
   seo_description?: string;
   seo_body_html?: string;
   published_at?: number;
+  // Visual enrichment payload (populated by the thesis-labeler + media-mirror
+  // + geocoder + screenshot-worker chain triggered by n8n after enrich).
+  // Any field below may be missing when the deal is pre-enrichment-cutover.
+  lat?: number;
+  lng?: number;
+  formatted_address?: string;
+  media?: MediaItem[];
+  industry_benchmark?: IndustryBenchmark;
+  comparables?: ComparableDeal[];
 };
 
 async function fetchPublicDeal(slug: string): Promise<PublicDeal | null> {
@@ -87,6 +112,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const hasSubstantiveBody =
     typeof deal.seo_body_html === "string" &&
     deal.seo_body_html.length >= MIN_BODY_HTML_CHARS;
+  // card.png is a server-rendered 1200×630 OG card. The API serves it
+  // with immutable + 1y cache so social crawlers always see a current
+  // snapshot without us pre-generating files.
+  const cardUrl = `${PYPES_API_URL}/lamboapp/public/deals/${encodeURIComponent(deal.slug)}/card.png`;
   return {
     title,
     description,
@@ -100,11 +129,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url,
       type: "article",
       siteName: "LamboApp",
+      images: [{ url: cardUrl, width: 1200, height: 630, alt: deal.name }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [cardUrl],
     },
     other: {
       "deal:fit_score": String(deal.deal_fit_score ?? ""),
@@ -132,6 +163,18 @@ export default async function DealPage({ params }: PageProps) {
     : fitScore >= 5 ? { label: "Investigate", color: "text-yellow-300", bg: "bg-yellow-500/10 border-yellow-500/30" }
     : { label: "Pass", color: "text-red-300", bg: "bg-red-500/10 border-red-500/30" };
 
+  const hasMedia = Array.isArray(deal.media) && deal.media.length > 0;
+  const hasBenchmark =
+    deal.industry_benchmark && deal.industry_benchmark.sample_count >= 3;
+  const hasMap =
+    typeof deal.lat === "number" &&
+    typeof deal.lng === "number" &&
+    Number.isFinite(deal.lat) &&
+    Number.isFinite(deal.lng);
+  const hasComparables =
+    Array.isArray(deal.comparables) && deal.comparables.length > 0;
+  const dealMultiple = deal.sde_multiple_computed ?? deal.sde_multiple;
+
   // Article + BreadcrumbList schema (safe). We deliberately avoid
   // Product / Offer / AggregateRating: per Google's structured-data
   // guidelines (developers.google.com/search/docs/appearance/
@@ -157,6 +200,7 @@ export default async function DealPage({ params }: PageProps) {
       name: "LamboApp",
       url: SITE_URL,
     },
+    image: hasMedia ? deal.media!.map((m) => m.url) : undefined,
     mainEntityOfPage: `${SITE_URL}/deal/${deal.slug}`,
   };
 
@@ -181,7 +225,7 @@ export default async function DealPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <article className="mx-auto max-w-4xl px-6 py-16 md:py-24">
-        <nav className="mb-8 text-xs text-white/40">
+        <nav className="mb-4 text-xs text-white/40">
           <Link href="/" className="hover:text-white">LamboApp</Link>
           <span className="mx-2">/</span>
           <Link href="/deals" className="hover:text-white">Deals</Link>
@@ -189,6 +233,17 @@ export default async function DealPage({ params }: PageProps) {
           <span className="text-white/60">Deal</span>
         </nav>
 
+        <TrustBar
+          source={deal.source}
+          sourceUrl={deal.source_url}
+          publishedAt={deal.published_at}
+        />
+
+        {/* thesis_label (buy_signal / investigate / pass) is 1:1 with the
+            fit-score-derived verdict, so we don't render it as a separate
+            chip — otherwise "Buy signal · Fit score 8.5 · Buy Signal" shows
+            the same word twice. The field stays on the type for future
+            use by header colorings / search filters. */}
         <div className={`mb-6 inline-flex items-center gap-3 rounded-full border ${verdict.bg} px-4 py-1.5`}>
           <span className={`text-sm font-bold uppercase tracking-wide ${verdict.color}`}>
             {verdict.label}
@@ -203,17 +258,23 @@ export default async function DealPage({ params }: PageProps) {
           {deal.name}
         </h1>
 
+        {hasMedia && <MediaCarousel media={deal.media!} />}
+
         <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           <Stat label="Asking" value={money(deal.asking_price)} />
           <Stat label="Annual revenue" value={money(deal.annual_revenue)} />
           <Stat label="Annual profit" value={money(deal.annual_profit)} />
-          <Stat label="SDE multiple" value={deal.sde_multiple_computed ? `${deal.sde_multiple_computed.toFixed(1)}x` : "—"} />
+          <Stat label="SDE multiple" value={dealMultiple ? `${dealMultiple.toFixed(1)}x` : "—"} />
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
           <Chip>{deal.origin === "smb" ? "🏭 SMB" : "💻 Online"}</Chip>
           {deal.normalized_industry && <Chip>{humanize(deal.normalized_industry)}</Chip>}
-          {deal.location && <Chip>📍 {deal.location}</Chip>}
+          {deal.formatted_address ? (
+            <Chip>📍 {deal.formatted_address}</Chip>
+          ) : deal.location ? (
+            <Chip>📍 {deal.location}</Chip>
+          ) : null}
           <Chip>Source: {deal.source}</Chip>
         </div>
 
@@ -252,6 +313,21 @@ export default async function DealPage({ params }: PageProps) {
           )}
         </div>
 
+        {hasBenchmark && (
+          <BenchmarkBar
+            benchmark={deal.industry_benchmark!}
+            dealMultiple={dealMultiple}
+          />
+        )}
+
+        {hasMap && (
+          <DealMap
+            lat={deal.lat!}
+            lng={deal.lng!}
+            address={deal.formatted_address || deal.location}
+          />
+        )}
+
         {deal.seo_body_html && (
           <section
             className="mt-20 max-w-none text-white/80 [&_p]:mb-6 [&_p]:text-[15px] [&_p]:leading-[1.75] md:[&_p]:text-base [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-white [&_ul]:mb-6 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_li]:leading-relaxed [&_h2]:mt-10 [&_h2]:mb-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-white [&_a]:text-yellow-300 [&_a]:underline [&_a]:decoration-yellow-500/40 [&_a]:underline-offset-2 hover:[&_a]:text-yellow-200"
@@ -284,6 +360,10 @@ export default async function DealPage({ params }: PageProps) {
             </Link>
           </div>
         </section>
+
+        {hasComparables && (
+          <ComparablesStrip comparables={deal.comparables!} />
+        )}
 
         <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/50">
           Broker-supplied numbers, unverified. Thesis and red flags are
