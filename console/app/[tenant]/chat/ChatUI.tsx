@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ModelPicker, useChatModel } from "@/components/ModelPicker";
 import { extractCronProposal } from "@/lib/cron-proposal";
 
@@ -231,7 +231,11 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
                   {m.role === "user" ? "You" : "Assistant"}
                 </div>
                 <div className="text-sm whitespace-pre-wrap font-normal">
-                  {m.content || (busy && i === messages.length - 1 ? "…" : "")}
+                  {m.content
+                    ? renderWithArtifacts(m.content, tenantSlug)
+                    : busy && i === messages.length - 1
+                      ? "…"
+                      : ""}
                 </div>
               </div>
 
@@ -299,4 +303,59 @@ export default function ChatUI({ tenantSlug, tenantName }: Props) {
       </div>
     </div>
   );
+}
+
+// Scan assistant text for artifact proxy URLs — /api/<tenant>/artifacts/<key> —
+// and render each one inline. Images (by extension) render as a thumbnail;
+// everything else becomes a titled download link. Tenant-scoped: only URLs
+// whose tenant segment matches the current page's tenant are rendered inline;
+// cross-tenant URLs stay as plain text (the agent shouldn't be producing
+// those, but defense-in-depth beats accidental cross-tenant render).
+function renderWithArtifacts(text: string, tenantSlug: string): ReactNode {
+  const re = /\/api\/([a-z0-9-]+)\/artifacts\/([^\s<>"']+)/g;
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  let n = 0;
+  while ((match = re.exec(text)) !== null) {
+    const [full, slug, encodedKey] = match;
+    if (match.index > cursor) {
+      nodes.push(text.slice(cursor, match.index));
+    }
+    if (slug === tenantSlug) {
+      const key = decodeURIComponent(encodedKey);
+      const isImage = /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(key);
+      if (isImage) {
+        nodes.push(
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            key={`artifact-${n}`}
+            src={full}
+            alt={key}
+            className="my-2 max-w-full max-h-80 rounded border border-[color:var(--color-border)]"
+          />,
+        );
+      } else {
+        nodes.push(
+          <a
+            key={`artifact-${n}`}
+            href={full}
+            target="_blank"
+            rel="noreferrer"
+            className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+          >
+            {key.split("/").pop() ?? key}
+          </a>,
+        );
+      }
+    } else {
+      // Different-tenant URL — render as plain text to avoid cross-tenant
+      // artifact previews. Agent-visible, operator-reviewable.
+      nodes.push(full);
+    }
+    cursor = match.index + full.length;
+    n += 1;
+  }
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return nodes.length === 1 && typeof nodes[0] === "string" ? nodes[0] : <>{nodes}</>;
 }

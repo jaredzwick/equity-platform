@@ -41,6 +41,12 @@ import {
   type ConcurrencyPolicy,
   type ProvisionCronInput,
 } from "../lib/cron-render.js";
+import {
+  listObjects,
+  putObject,
+  getObjectBuffer,
+  bucketForTenant,
+} from "../lib/s3.js";
 
 // ── K8s client (kubeconfig or in-cluster) ────────────────────────────────────
 //
@@ -628,6 +634,87 @@ async function toolUpdateProfile(args: { slug: string; patch: Record<string, unk
   return `✅ Profile ${existing ? "updated" : "created"} at ${path}.\n\n\`\`\`yaml\n${yaml.trimEnd()}\n\`\`\``;
 }
 
+// ── S3 artifact tools ────────────────────────────────────────────────────────
+
+async function toolS3Put(args: {
+  tenant: string;
+  key: string;
+  body_base64: string;
+  content_type?: string;
+}): Promise<string> {
+  const key = args.key.replace(/^\/+/, "");
+  if (!key) throw new Error("key required (no leading slash)");
+  let body: Buffer;
+  try {
+    body = Buffer.from(args.body_base64, "base64");
+  } catch (e) {
+    throw new Error(`body_base64 is not valid base64: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const result = await putObject(args.tenant, key, body, args.content_type);
+  // Publish artifact.created so the console UI + any NATS consumers see it.
+  await publishArtifactCreated(args.tenant, result, args.content_type).catch((e) => {
+    console.error(`[s3_put] NATS publish failed for ${args.tenant}/${key}:`, e);
+  });
+  return `✅ Wrote ${result.size} bytes to ${result.bucket}/${result.key} (etag ${result.etag}).\n\nFetch via console: /api/${args.tenant}/artifacts/${result.key}`;
+}
+
+async function toolS3Get(args: { tenant: string; key: string }): Promise<string> {
+  const key = args.key.replace(/^\/+/, "");
+  if (!key) throw new Error("key required");
+  const buf = await getObjectBuffer(args.tenant, key);
+  return JSON.stringify({
+    bucket: bucketForTenant(args.tenant),
+    key,
+    size: buf.byteLength,
+    body_base64: buf.toString("base64"),
+  });
+}
+
+async function toolS3List(args: {
+  tenant: string;
+  prefix?: string;
+  max_keys?: number;
+}): Promise<string> {
+  const entries = await listObjects(args.tenant, args.prefix ?? "", args.max_keys ?? 1000);
+  if (entries.length === 0) {
+    return `(no artifacts in ${bucketForTenant(args.tenant)}${args.prefix ? ` under '${args.prefix}'` : ""})`;
+  }
+  const lines = entries.map(
+    (e) => `  ${e.key.padEnd(60)} ${String(e.size).padStart(10)}B  ${e.lastModified.toISOString()}`,
+  );
+  return `${entries.length} artifact(s) in ${bucketForTenant(args.tenant)}:\n${lines.join("\n")}`;
+}
+
+// Best-effort NATS publish of artifact.created. Inlined here (not imported
+// from lib/nats.ts) because the MCP has its own NATS connection scheme —
+// matches how create_cron handles cron.completed events.
+async function publishArtifactCreated(
+  tenant: string,
+  put: { bucket: string; key: string; size: number; etag: string },
+  contentType?: string,
+): Promise<void> {
+  const natsUrl = process.env.NATS_URL ?? "nats://localhost:4222";
+  const { connect } = await import("nats");
+  const nc = await connect({ servers: natsUrl, name: "equity-mcp-artifact", timeout: 2000 });
+  try {
+    const subject = `events.${tenant}.artifact.created`;
+    const payload = {
+      tenant,
+      bucket: put.bucket,
+      key: put.key,
+      size: put.size,
+      etag: put.etag,
+      content_type: contentType,
+      proxy_url: `/api/${tenant}/artifacts/${put.key}`,
+      created_at: new Date().toISOString(),
+    };
+    nc.publish(subject, new TextEncoder().encode(JSON.stringify(payload)));
+    await nc.flush();
+  } finally {
+    await nc.close();
+  }
+}
+
 // ── Server wiring ────────────────────────────────────────────────────────────
 const server = new Server(
   { name: "equity-mcp", version: "0.1.0" },
@@ -685,6 +772,68 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ["slug", "patch"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "s3_put",
+      description:
+        "Store an artifact in the tenant's S3 bucket. Returns the object key + size. Agents use this to persist outputs (reports, screenshots, exports) that should outlive the chat scrollback. Body is base64-encoded so binary data round-trips cleanly through the MCP wire format.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          tenant: { type: "string", description: "Tenant slug (e.g. 'acme')." },
+          key: {
+            type: "string",
+            description:
+              "Object key, slash-separated path within the tenant bucket (e.g. 'reports/2026-10-14-weekly.html'). No leading slash.",
+          },
+          body_base64: {
+            type: "string",
+            description: "Artifact bytes, base64-encoded.",
+          },
+          content_type: {
+            type: "string",
+            description:
+              "Optional MIME type (e.g. 'text/html', 'image/png', 'application/pdf'). Shown in the Artifacts tab and used by the proxy route.",
+          },
+        },
+        required: ["tenant", "key", "body_base64"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "s3_get",
+      description:
+        "Read an artifact from the tenant's S3 bucket. Returns the content as base64 (binary-safe) plus size + content-type. Use s3_list first if you don't know the exact key.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          tenant: { type: "string", description: "Tenant slug." },
+          key: { type: "string", description: "Object key within the tenant bucket." },
+        },
+        required: ["tenant", "key"],
+        additionalProperties: false,
+      },
+    },
+    {
+      name: "s3_list",
+      description:
+        "List artifacts in the tenant's S3 bucket. Returns key, size, last-modified. Use `prefix` to scope to a subdirectory (e.g. 'reports/').",
+      inputSchema: {
+        type: "object",
+        properties: {
+          tenant: { type: "string", description: "Tenant slug." },
+          prefix: {
+            type: "string",
+            description: "Optional key prefix to filter by. Empty = list everything.",
+          },
+          max_keys: {
+            type: "number",
+            description: "Optional cap on results (default 1000).",
+          },
+        },
+        required: ["tenant"],
         additionalProperties: false,
       },
     },
@@ -756,6 +905,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "create_cron":
         text = await toolCreateCron(args as CreateCronArgs);
+        break;
+      case "s3_put":
+        text = await toolS3Put(args as { tenant: string; key: string; body_base64: string; content_type?: string });
+        break;
+      case "s3_get":
+        text = await toolS3Get(args as { tenant: string; key: string });
+        break;
+      case "s3_list":
+        text = await toolS3List(args as { tenant: string; prefix?: string; max_keys?: number });
         break;
       default:
         return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true };
