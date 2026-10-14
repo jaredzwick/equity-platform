@@ -23,6 +23,7 @@ export default async function TenantLayout({ children, params }: Props) {
   // new landing surface for a business; /[tenant] redirects to it.
   const tabs = [
     { href: `/${slug}/profile`, label: "Profile" },
+    { href: `/${slug}/metrics`, label: "Metrics" },
     { href: `/${slug}/cron`, label: "Cron" },
     { href: `/${slug}/events`, label: "Events" },
     { href: `/${slug}/chat`, label: "Chat" },
