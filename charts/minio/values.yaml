@@ -1,0 +1,52 @@
+# MinIO Helm values (official chart from https://charts.min.io).
+# Chart version pinned in apps/minio.yaml.
+#
+# LOCAL kind: single standalone replica, 5Gi PVC. Teardown via
+#   ./local/down.sh wipes the PVC along with the cluster — fine for
+#   dev; swap to `mode: distributed` + a persistent StorageClass
+#   for prod.
+#
+# Service type is ClusterIP — reach the API/console with a port-forward:
+#   kubectl -n minio port-forward svc/minio 9000:9000
+#   kubectl -n minio port-forward svc/minio-console 9001:9001
+
+mode: standalone
+
+replicas: 1
+
+# Local-dev credentials. Rotate before any non-local use. These are
+# the ONLY place MinIO root creds live in-repo; in-cluster workloads
+# read from the Secret minio-env in the minio namespace which this
+# chart generates from these values.
+rootUser: minioadmin
+rootPassword: minioadmin
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 100m
+
+service:
+  type: ClusterIP
+  port: 9000
+
+consoleService:
+  type: ClusterIP
+  port: 9001
+
+# Disable the chart's built-in bucket/user bootstrap jobs — those run
+# as post-install Jobs that race with ArgoCD's sync and leave Pods in
+# Error on reconcile. If you need default buckets, create them from
+# the console or via `mc` after the cluster is up.
+buckets: []
+users: []
+policies: []
+
+# TLS terminates at an ingress proxy, not at the pod — flip to true
+# only if you're reaching MinIO directly over the network.
+tls:
+  enabled: false

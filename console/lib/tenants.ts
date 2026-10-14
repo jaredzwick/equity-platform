@@ -3,6 +3,7 @@ import { core } from "@/lib/k8s";
 import { getFile } from "@/lib/github";
 import { ensureRunnerSecret } from "@/lib/runner-secret";
 import { ensureTenantStream } from "@/lib/nats-streams";
+import { ensureTenantBucket } from "@/lib/s3";
 
 // A tenant (business) is discovered by scanning cluster namespaces for the
 // label `equity.io/tenant`. The label value is the slug used in URLs; the
@@ -163,6 +164,15 @@ export async function reconcileTenantsFromRepo(): Promise<ReconcileResult> {
     const streamResult = await ensureTenantStream(tenant.slug);
     if (!streamResult.ok) {
       console.error(`[nats-stream] auto-provision failed for ${tenant.slug}:`, streamResult.error);
+    }
+    // Best-effort: provision the tenant's artifact bucket on MinIO so
+    // agents can write/read artifacts without a manual bootstrap step.
+    // Non-fatal — if MinIO is down or env vars are missing, business
+    // creation still succeeds; artifact MCP tools will fail with a clear
+    // error until the operator fixes the backend.
+    const bucketResult = await ensureTenantBucket(tenant.slug);
+    if (!bucketResult.ok) {
+      console.error(`[s3-bucket] auto-provision failed for ${tenant.slug}:`, bucketResult.reason);
     }
     if (!hadError) result.created.push(tenant.slug);
   }

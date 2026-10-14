@@ -27,7 +27,7 @@ Running multiple businesses on Kubernetes normally means re-deriving the same in
 **What you get out of the box:**
 - Local kind cluster (~3 min boot, $0)
 - ArgoCD wired app-of-apps, pinned versions
-- External Secrets Operator, NATS JetStream, Prometheus + Grafana as ArgoCD Applications
+- External Secrets Operator, NATS JetStream, Prometheus + Grafana, MinIO (S3) as ArgoCD Applications
 - **Multi-tenant Next.js console:** master view aggregating every business + per-business drill-in
 - **UI-driven app provisioning:** fill a form → commit lands in git → ArgoCD reconciles
 - **Rollback via git revert:** history page links straight to GitHub's revert UI
@@ -52,6 +52,7 @@ graph TD
         ES[External Secrets]
         NA[NATS JetStream]
         PR[Prometheus + Grafana]
+        MI[MinIO S3]
       end
       subgraph "Tenants (you create these)"
         T1[business-a-prod ns]
@@ -65,6 +66,7 @@ graph TD
     A -->|reconcile| ES
     A -->|reconcile| NA
     A -->|reconcile| PR
+    A -->|reconcile| MI
     A -->|reconcile| T1
     A -->|reconcile| T2
     A -->|reconcile| T3
@@ -351,6 +353,7 @@ Verified end-to-end on every push: shellcheck + yamllint + kubeconform against `
 | **App-of-apps** | ApplicationSet | Simpler; upgrade when >20 apps |
 | **NATS JetStream** | Redis Streams / Kafka | Persistent + replayable + no ZooKeeper |
 | **External Secrets Operator** | SOPS / Sealed Secrets | Backend-agnostic — swap DO Secrets / 1Password / SOPS |
+| **MinIO** | Managed S3 (AWS/DO Spaces/R2) | Same S3 API end-to-end — swap the endpoint in prod without rewriting workloads |
 | **Namespace-per-tenant** | Cluster-per-tenant | Cheaper for solo shops |
 | **Contents API for write-back** | Local git clone + shell out | No git state to manage; works local + in-cluster |
 | **2 commits per new app** | Git Data API (atomic) | Simpler; upgrade when atomicity bites |

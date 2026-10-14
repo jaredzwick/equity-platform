@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
+  // Allow isolating the build output directory via env — the pre-push hook
+  // sets NEXT_DIST_DIR to a tempdir to avoid colliding with whatever is
+  // concurrently writing to the main .next (dev server, in-cluster
+  // containers bind-mounting the project dir, etc). Unset falls back to
+  // the Next default (.next).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Allow embedding Grafana panels via iframe. Grafana URL comes from env.
   async headers() {
     return [
