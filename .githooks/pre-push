@@ -39,14 +39,26 @@ done
 build_app() {
   app=$1
   echo "pre-push: $app/ changed — running 'npm run build' (mirrors Vercel)"
+  # Isolated per-run dist dir, outside the project tree. Next.js reads
+  # NEXT_DIST_DIR via next.config.ts and writes there instead of .next.
+  # Rationale: a long-running process bind-mounted into the project
+  # (dev server inside a container, kind cluster, etc.) can leave
+  # root-owned files in .next between pushes, which then kills the next
+  # pre-push build on EACCES. Keeping the hook's output somewhere nobody
+  # else writes to removes the collision class entirely.
+  local dist_dir
+  dist_dir=$(mktemp -d -t "equity-prepush-$app-XXXXXX")
   (
     cd "$app"
     if [ ! -d node_modules ] || [ package-lock.json -nt node_modules ]; then
       echo "pre-push: installing $app deps"
       npm ci
     fi
-    npm run build
+    NEXT_DIST_DIR="$dist_dir" npm run build
   )
+  local rc=$?
+  rm -rf "$dist_dir" 2>/dev/null || true
+  return $rc
 }
 
 [ "$build_console" -eq 1 ] && build_app console
