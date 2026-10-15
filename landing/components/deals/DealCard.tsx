@@ -41,7 +41,7 @@ export function DealCard({
   const handleSave = () => {
     if (!isAuth) {
       startTransition(() => {
-        router.push("/signup");
+        router.push("/join");
       });
       return;
     }
@@ -171,7 +171,7 @@ export function DealCard({
           }`}
         >
           <span aria-hidden>{isSaved ? "★" : "☆"}</span>
-          {isAuth ? (isSaved ? "Saved" : "Save") : "Sign up to save"}
+          {isAuth ? (isSaved ? "Saved" : "Save") : "Get the playbook to save"}
         </button>
       </div>
     </article>

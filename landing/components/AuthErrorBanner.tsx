@@ -14,11 +14,11 @@ type ErrorEntry = {
 };
 
 // GitHub OAuth is currently disabled on lamboapp.com — every auth error
-// funnels users to the phone-signup form at /signup instead of retrying
-// the broken GH flow. The `oauth_*` / `token_*` / `csrf` codes still get
-// mapped so error links that were emailed or bookmarked before the swap
-// don't render as raw codes.
-const SIGNUP_ACTION = { label: "Get on the list", href: "/signup", primary: true } as const;
+// funnels users to /join (the 90-day playbook lead magnet) instead of
+// retrying the broken GH flow. The `oauth_*` / `token_*` / `csrf` codes
+// still get mapped so error links that were emailed or bookmarked before
+// the swap don't render as raw codes.
+const SIGNUP_ACTION = { label: "Get the playbook", href: "/join", primary: true } as const;
 
 const ERROR_MAP: Record<string, ErrorEntry> = {
   not_authenticated: {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/session";
 import AnimatedSection from "@/components/AnimatedSection";
 import FeatureCard from "@/components/FeatureCard";
-import HowItWorks from "@/components/HowItWorks";
+import MemeFunnel from "@/components/MemeFunnel";
 import HeroSceneClient from "@/components/HeroSceneClient";
 import AuthErrorBanner from "@/components/AuthErrorBanner";
 import TerminalPanel from "@/components/TerminalPanel";
@@ -39,19 +39,19 @@ export default async function HomePage({ searchParams }: Props) {
             </div>
 
             <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight text-white md:text-5xl lg:text-6xl">
-              Every business for sale.{" "}
+              Buy a $1M business for{" "}
               <span className="bg-gradient-to-br from-yellow-300 via-orange-400 to-red-500 bg-clip-text text-transparent">
-                Read by Claude. Ranked by fit.
+                $100K down.
               </span>
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
-              LamboApp aggregates{" "}
-              <span className="text-white">~100 new listings per day</span>{" "}
-              from 30+ broker networks — BizBuySell, Flippa, Empire Flippers,
-              Acquire, Quiet Light — and has an LLM read every one for
-              SDE multiple, red flags, growth signals, and a one-paragraph
-              thesis. Filter, save, and message from a single feed.
+              SBA 7(a) lets you buy a cash-flowing business with{" "}
+              <span className="text-white">10% down</span>. LamboApp aggregates{" "}
+              <span className="text-white">~100 fresh listings per day</span>{" "}
+              from 30+ broker networks and has an LLM read every one for SDE
+              multiple, red flags, and fit score. Browse, save, and get texted
+              when an 8+ hits the feed.
             </p>
 
             <p className="mt-3 max-w-xl text-sm italic text-white/40">
@@ -77,23 +77,6 @@ export default async function HomePage({ searchParams }: Props) {
                   Get the free playbook
                 </Button>
               )}
-              <Button href="/docs" variant="secondary" size="lg">
-                How the machine works
-              </Button>
-            </div>
-
-            {/* Sell-side wedge — quiet secondary CTA under the primary
-                row. Kept small so it doesn't compete with the buyer
-                sign-in but catches business owners arriving from an
-                SEO query for "sell your business". */}
-            <div className="mt-5 text-sm text-white/50">
-              Own a business?{" "}
-              <Link
-                href="/sell"
-                className="border-b border-yellow-400/40 pb-0.5 text-yellow-300 transition hover:text-yellow-200 hover:border-yellow-400"
-              >
-                List it for $7 →
-              </Link>
             </div>
           </div>
 
@@ -151,22 +134,32 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </AnimatedSection>
 
-      {/* HOW IT WORKS */}
+      {/* HOW IT WORKS — the Underpants Gnomes bit. We set up the meme in
+          the header, then the four-step funnel fills in the "???" with
+          actual numbers. */}
       <AnimatedSection id="how" className="relative mx-auto max-w-6xl px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="text-xs font-mono uppercase tracking-widest text-orange-400">
-            How the machine works
+        <div className="mx-auto max-w-3xl">
+          <div className="text-xs font-mono uppercase tracking-widest text-yellow-400">
+            The missing step
           </div>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">
-            Every 6 hours: firehose.{" "}
-            <span className="text-white/60">Every hour: Claude screens 8 deals, scores 0-10, writes a thesis, flags landmines.</span>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-5xl">
+            Step 1.{" "}
+            <span className="relative inline-block text-white/30">
+              <span className="line-through decoration-red-500/70 decoration-[3px]">
+                ???
+              </span>
+            </span>{" "}
+            Step 3.{" "}
+            <span className="text-yellow-300">Profit.</span>
           </h2>
-          <p className="mt-4 text-white/60">
-            You get the top-fit deals in a browsable feed. Buy signal, investigate, or pass — one glance. Sourcing is now something that happens while you sleep instead of something you feel guilty about not doing.
+          <p className="mt-5 max-w-2xl text-white/60 md:text-lg">
+            The underpants gnomes had a point. Every finance guru&rsquo;s plan
+            secretly bottoms out at &ldquo;???&rdquo;. Here&rsquo;s step 2 — in
+            four honest moves, with the actual numbers.
           </p>
         </div>
-        <div className="mt-16 md:mt-20">
-          <HowItWorks />
+        <div className="mt-16 md:mt-24">
+          <MemeFunnel />
         </div>
       </AnimatedSection>
 
@@ -291,14 +284,6 @@ export default async function HomePage({ searchParams }: Props) {
                   <ArrowRight />
                 </Link>
               )}
-              <a
-                href="https://github.com/jaredzwick/equity-platform"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
-              >
-                Star on GitHub (if you&rsquo;re too poor for lambo but too smart for meme stocks)
-              </a>
             </div>
           </div>
         </div>

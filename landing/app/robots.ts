@@ -22,7 +22,9 @@ const SITE_URL = "https://www.lamboapp.com";
 //     Apple Intelligence.
 //
 // Blocked: /api/ (internal), /onboarding/ (auth-gated flow), /signup
-// (transactional form, no SEO value).
+// (legacy, 308s to /join; blocked so crawlers index the canonical page
+// directly). /join itself is a lead-magnet landing — intentionally
+// indexable.
 
 export default function robots(): MetadataRoute.Robots {
   const disallow = ["/api/", "/onboarding/", "/signup"];

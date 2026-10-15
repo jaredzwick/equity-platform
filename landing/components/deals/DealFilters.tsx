@@ -31,7 +31,7 @@ import { fmtMoney } from "@/lib/format";
 //      opens a bottom sheet holding the same controls.
 //   3. Active-filter chip strip: derived from `initial`; each chip
 //      removes ITS filter; "Text me matches" pill on the right routes
-//      unauth visitors to /signup with the current filter set preserved.
+//      unauth visitors to /join (the single opt-in surface).
 //
 // URL is the source of truth. Every mutation goes through `push`,
 // which mutates the URLSearchParams + resets page to 1. Server RSC
@@ -166,14 +166,10 @@ export function DealFilters({
   const hasAnyFilter = anyFilterActive(initial);
   const activeCount = countActiveFilters(initial);
 
-  // "Text me matches" preserves the current filter set through the
-  // /signup flow via ?redirect_to=/deals?<current query>.
-  const alertHref = useMemo(() => {
-    const qs = params.toString();
-    return qs
-      ? `/signup?redirect_to=${encodeURIComponent(`/deals?${qs}`)}`
-      : "/signup";
-  }, [params]);
+  // "Text me matches" sends to /join — the single opt-in surface.
+  // Query-string round-trip was removed when /signup consolidated into
+  // /join on 2026-10-15; /join does not currently honor `redirect_to`.
+  const alertHref = "/join";
 
   return (
     <div className={pending ? "opacity-80 transition-opacity" : ""}>

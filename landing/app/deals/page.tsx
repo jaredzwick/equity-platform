@@ -232,10 +232,10 @@ export default async function DealsPage({
             matches your industry, revenue, and multiple criteria.
           </p>
           <Link
-            href="/signup"
+            href="/join"
             className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 px-5 py-2.5 text-sm font-bold text-black transition-transform hover:scale-[1.02]"
           >
-            Get on the list →
+            Get the free playbook →
           </Link>
         </div>
       )}
