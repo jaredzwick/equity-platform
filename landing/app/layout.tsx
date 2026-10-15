@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
+import { ToastProvider } from "@/lib/useToast";
+import { Toast } from "@/components/ui/Toast";
 import "./globals.css";
 
 // www is canonical — Vercel 308-redirects apex → www by default. Indexing API
@@ -144,6 +146,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="min-h-screen flex flex-col overflow-x-hidden">
+        <ToastProvider>
         <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-black/40 backdrop-blur-xl supports-[backdrop-filter]:bg-black/30">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
             <Link href="/" className="flex items-center gap-2 font-bold tracking-tight text-white">
@@ -254,6 +257,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </div>
         </footer>
+        <Toast />
+        </ToastProvider>
       </body>
     </html>
   );

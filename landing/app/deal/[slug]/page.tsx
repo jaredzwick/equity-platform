@@ -17,6 +17,12 @@ import {
 } from "@/components/deals/ComparablesStrip";
 import { DealMap } from "@/components/deals/DealMap";
 import { TrustBar } from "@/components/deals/TrustBar";
+import { ShareButton } from "@/components/share/ShareButton";
+import {
+  partnerEmailBody,
+  partnerEmailSubject,
+  type ShareableDeal,
+} from "@/lib/share";
 import { getSession } from "@/lib/session";
 
 // SSR-rendered SEO landing page for one enriched deal. Backed by
@@ -254,6 +260,10 @@ export default async function DealPage({ params }: PageProps) {
           </span>
         </div>
 
+        <div className="mb-6">
+          <ShareButton deal={toShareableDeal(deal)} />
+        </div>
+
         <h1 className="text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl lg:text-5xl">
           {deal.name}
         </h1>
@@ -344,8 +354,9 @@ export default async function DealPage({ params }: PageProps) {
             updates the listing, drops the price, or new comparable deals
             hit the feed.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <SaveDealCTA dealId={deal.id} slug={deal.slug} isAuth={isAuth} />
+            <ShareButton deal={toShareableDeal(deal)} variant="ghost" />
             <Link
               href="/deals"
               className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
@@ -358,6 +369,16 @@ export default async function DealPage({ params }: PageProps) {
             >
               Or get the free playbook
             </Link>
+          </div>
+          <div className="mt-4">
+            <a
+              href={`mailto:?subject=${encodeURIComponent(
+                partnerEmailSubject(toShareableDeal(deal)),
+              )}&body=${encodeURIComponent(partnerEmailBody(toShareableDeal(deal)))}`}
+              className="inline-flex items-center gap-2 text-sm text-white/70 underline underline-offset-4 transition hover:text-yellow-200"
+            >
+              📧 Send to a partner for a gut check
+            </a>
           </div>
         </section>
 
@@ -400,4 +421,20 @@ function money(n: number | null | undefined): string {
 
 function humanize(s: string): string {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Narrow the PublicDeal payload to the fields share.ts needs. Keeps the
+// Share components decoupled from the full API-response shape so the lib
+// doesn't drift when the enricher adds new fields.
+function toShareableDeal(deal: PublicDeal): ShareableDeal {
+  return {
+    slug: deal.slug,
+    name: deal.name,
+    asking_price: deal.asking_price ?? null,
+    annual_revenue: deal.annual_revenue ?? null,
+    annual_profit: deal.annual_profit ?? null,
+    deal_fit_score: deal.deal_fit_score ?? null,
+    thesis: deal.thesis ?? null,
+    location: deal.formatted_address ?? deal.location ?? null,
+  };
 }
