@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 // SaveDealCTA — primary conversion moment for /deal/[slug]. Mirrors
 // the localStorage-backed "saved deals" set used by DealBrowseList
 // (LOCAL_KEY "lambo.deals.saved.v1") so the deal-detail page and the
-// browse grid share one wishlist. Unauth visitors save + then route
-// to /signup with the current deal as their redirect_to so they land
-// back here after auth. Auth visitors just toggle the local pin
-// (backend watchlist is a future v1 add — same TODO as DealBrowseList).
+// browse grid share one wishlist. Unauth visitors pin the deal locally
+// then route to /join (the single opt-in surface). Auth visitors just
+// toggle the local pin (backend watchlist is a future v1 add — same
+// TODO as DealBrowseList).
 
 const LOCAL_KEY = "lambo.deals.saved.v1";
 
@@ -84,7 +84,7 @@ export function SaveDealCTA({
   if (!isAuth) {
     return (
       <Link
-        href={`/signup?redirect_to=${encodeURIComponent(`/deal/${slug}`)}`}
+        href="/join"
         onClick={persistSave}
         className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-6 py-3 text-sm font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
       >

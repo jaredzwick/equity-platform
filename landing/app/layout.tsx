@@ -187,10 +187,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               ) : (
                 <Link
-                  href="/signup"
+                  href="/join"
                   className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 px-4 py-2 text-xs font-bold uppercase tracking-wide text-black shadow-lg transition hover:shadow-orange-500/60"
                 >
-                  Sign up
+                  Get the playbook
                 </Link>
               )}
             </div>

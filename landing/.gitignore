@@ -10,3 +10,4 @@ test-results/
 .env*
 .leads.json
 .gstack/
+var/
