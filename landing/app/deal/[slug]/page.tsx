@@ -278,7 +278,6 @@ export default async function DealPage({ params }: PageProps) {
           ) : deal.location ? (
             <Chip>📍 {deal.location}</Chip>
           ) : null}
-          <Chip>Source: {deal.source}</Chip>
         </div>
 
         {deal.thesis && <DealThesis thesis={deal.thesis} />}
