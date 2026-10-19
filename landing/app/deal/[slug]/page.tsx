@@ -16,7 +16,6 @@ import {
   type ComparableDeal,
 } from "@/components/deals/ComparablesStrip";
 import { DealMap } from "@/components/deals/DealMap";
-import { TrustBar } from "@/components/deals/TrustBar";
 import { ShareButton } from "@/components/share/ShareButton";
 import {
   partnerEmailBody,
@@ -238,12 +237,6 @@ export default async function DealPage({ params }: PageProps) {
           <span className="mx-2">/</span>
           <span className="text-white/60">Deal</span>
         </nav>
-
-        <TrustBar
-          source={deal.source}
-          sourceUrl={deal.source_url}
-          publishedAt={deal.published_at}
-        />
 
         {/* thesis_label (buy_signal / investigate / pass) is 1:1 with the
             fit-score-derived verdict, so we don't render it as a separate
