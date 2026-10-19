@@ -349,18 +349,6 @@ export default async function DealPage({ params }: PageProps) {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <SaveDealCTA dealId={deal.id} slug={deal.slug} isAuth={isAuth} />
             <ShareButton deal={toShareableDeal(deal)} variant="ghost" />
-            <Link
-              href="/deals"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/[0.08]"
-            >
-              ← See more deals
-            </Link>
-            <Link
-              href="/join"
-              className="inline-flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white/70 underline underline-offset-4 transition hover:text-yellow-200"
-            >
-              Or get the free playbook
-            </Link>
           </div>
           <div className="mt-4">
             <a
@@ -377,11 +365,6 @@ export default async function DealPage({ params }: PageProps) {
         {hasComparables && (
           <ComparablesStrip comparables={deal.comparables!} />
         )}
-
-        <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/50">
-          Broker-supplied numbers, unverified. Thesis and red flags are
-          AI-generated from the listing text. Do your own QoE before you wire.
-        </div>
       </article>
     </>
   );
